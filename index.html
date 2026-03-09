@@ -257,6 +257,17 @@
               <input type="text" id="evt-hubspot-prop" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: conference_tech_2026 (sans espaces)">
               <p class="text-xs text-gray-400 mt-1">Ce nom sera utilise pour creer les proprietes HubSpot (inscription_X et presence_X)</p>
             </div>
+
+            <!-- SMS Factor Toggle -->
+            <div class="md:col-span-2 mt-2">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="evt-sms-factor" class="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                <div>
+                  <span class="text-sm font-medium text-gray-700">Activer les SMS (SMS Factor)</span>
+                  <p class="text-xs text-gray-400">Envoie un SMS de confirmation + rappels J-5, J-3, J-2, J-1</p>
+                </div>
+              </label>
+            </div>
           </div>
 
           <!-- HubSpot Forms -->
@@ -319,6 +330,8 @@
               <p class="text-xs text-gray-400 uppercase tracking-wide">Propriete HubSpot</p>
               <p class="font-medium text-gray-900 mt-1" id="detail-hubspot-prop">-</p>
             </div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100" id="detail-badges">
           </div>
         </div>
 
@@ -677,6 +690,7 @@ function resetEventForm() {
   document.getElementById('evt-capacity').value = '';
   document.getElementById('evt-status').value = 'draft';
   document.getElementById('evt-hubspot-prop').value = '';
+  document.getElementById('evt-sms-factor').checked = false;
   document.getElementById('form-search').value = '';
   loadHubspotForms();
 }
@@ -736,41 +750,79 @@ async function saveEvent() {
   const capacity = document.getElementById('evt-capacity').value;
   const status = document.getElementById('evt-status').value;
   const hubspotProp = document.getElementById('evt-hubspot-prop').value.trim();
+  const smsFactorEnabled = document.getElementById('evt-sms-factor').checked;
 
   if (!name || !eventDate) {
     showToast('Nom et date sont obligatoires', 'error');
     return;
   }
 
-  // Insert event
-  const { data: event, error } = await db.from('events').insert({
-    name,
-    description: description || null,
-    event_date: eventDate,
-    location: location || null,
-    max_capacity: capacity ? parseInt(capacity) : null,
-    status,
-    hubspot_property_name: hubspotProp || null
-  }).select().single();
+  const saveBtn = document.querySelector('#page-event-new button[onclick="saveEvent()"]');
+  const origText = saveBtn.textContent;
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Creation en cours...';
 
-  if (error) {
-    showToast('Erreur: ' + error.message, 'error');
-    return;
+  try {
+    // Insert event
+    const { data: event, error } = await db.from('events').insert({
+      name,
+      description: description || null,
+      event_date: eventDate,
+      location: location || null,
+      max_capacity: capacity ? parseInt(capacity) : null,
+      status,
+      hubspot_property_name: hubspotProp || null,
+      sms_factor_enabled: smsFactorEnabled
+    }).select().single();
+
+    if (error) {
+      showToast('Erreur: ' + error.message, 'error');
+      return;
+    }
+
+    // Insert forms from checkboxes
+    const checkedBoxes = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
+    const forms = [];
+    checkedBoxes.forEach(cb => {
+      forms.push({ event_id: event.id, hubspot_form_id: cb.value, form_name: cb.dataset.name || null });
+    });
+
+    if (forms.length > 0) {
+      await db.from('event_forms').insert(forms);
+    }
+
+    // Create HubSpot workflow + properties automatically
+    if (hubspotProp) {
+      saveBtn.textContent = 'Configuration HubSpot...';
+      try {
+        const wfRes = await fetch(SUPABASE_URL + '/functions/v1/create-workflow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: event.id,
+            event_name: name,
+            hubspot_property_name: hubspotProp
+          })
+        });
+        const wfData = await wfRes.json();
+        if (wfData.workflow_id) {
+          showToast('Evenement + workflow HubSpot crees !');
+        } else {
+          showToast('Evenement cree. Workflow HubSpot: ' + (wfData.error || 'avertissement'), 'warning');
+        }
+      } catch (e) {
+        console.error('Workflow creation error:', e);
+        showToast('Evenement cree mais erreur workflow HubSpot', 'warning');
+      }
+    } else {
+      showToast('Evenement cree avec succes !');
+    }
+
+    navigate('event/' + event.id);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = origText;
   }
-
-  // Insert forms from checkboxes
-  const checkedBoxes = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
-  const forms = [];
-  checkedBoxes.forEach(cb => {
-    forms.push({ event_id: event.id, hubspot_form_id: cb.value, form_name: cb.dataset.name || null });
-  });
-
-  if (forms.length > 0) {
-    await db.from('event_forms').insert(forms);
-  }
-
-  showToast('Evenement cree avec succes !');
-  navigate('event/' + event.id);
 }
 
 // ============================================================
@@ -788,6 +840,18 @@ async function loadEventDetail(id) {
   document.getElementById('detail-date').textContent = formatDate(event.event_date);
   document.getElementById('detail-location').textContent = event.location || 'Non defini';
   document.getElementById('detail-hubspot-prop').textContent = event.hubspot_property_name || 'Non defini';
+
+  // Badges
+  const badgesEl = document.getElementById('detail-badges');
+  let badges = '';
+  if (event.sms_factor_enabled) {
+    badges += '<span class="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium">SMS Factor actif</span>';
+  }
+  if (event.hubspot_workflow_id) {
+    badges += `<a href="https://app-eu1.hubspot.com/workflows/${event.hubspot_workflow_id}" target="_blank" class="text-xs px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-medium hover:bg-orange-200 transition">Workflow HubSpot ↗</a>`;
+  }
+  if (!badges) badges = '<span class="text-xs text-gray-400">Aucune integration configuree</span>';
+  badgesEl.innerHTML = badges;
 
   const statusEl = document.getElementById('detail-status');
   statusEl.innerHTML = `<span class="text-xs px-3 py-1 rounded-full ${statusClass(event.status)}">${statusLabel(event.status)}</span>`;
@@ -1085,7 +1149,6 @@ document.addEventListener('DOMContentLoaded', () => {
   handleRoute();
 });
 
-window.addEventListener('hashchange', handleRoute);
 </script>
 </body>
 </html>
