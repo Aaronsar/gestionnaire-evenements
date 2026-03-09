@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestionnaire d'Evenements</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .scanner-overlay { position: relative; }
+    .scanner-overlay::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px; height: 200px;
+      border: 3px solid #3b82f6;
+      border-radius: 12px;
+      pointer-events: none;
+    }
+    #reader video { border-radius: 12px; }
+    .toast {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      padding: 16px 24px; border-radius: 12px; color: white;
+      font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      animation: slideIn 0.3s ease-out, slideOut 0.3s ease-in 2.7s;
+      max-width: 400px;
+    }
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+    .toast.warning { background: #f59e0b; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a' }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ============================================================ -->
+<!-- TOAST CONTAINER -->
+<!-- ============================================================ -->
+<div id="toast-container"></div>
+
+<!-- ============================================================ -->
+<!-- LOGIN PAGE -->
+<!-- ============================================================ -->
+<div id="page-login" class="page active">
+  <div class="min-h-screen flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900">Gestionnaire d'Evenements</h1>
+        <p class="text-gray-500 mt-2">Connectez-vous pour acceder au dashboard</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+        <input type="email" id="login-email"
+          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition mb-4"
+          placeholder="Entrez votre email"
+          onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus()">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+        <input type="password" id="login-password"
+          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
+          placeholder="Entrez le mot de passe"
+          onkeydown="if(event.key==='Enter') doLogin()">
+        <button onclick="doLogin()"
+          class="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-xl transition">
+          Se connecter
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MAIN APP LAYOUT -->
+<!-- ============================================================ -->
+<div id="app-layout" style="display:none;">
+  <!-- Sidebar -->
+  <div class="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-40 hidden lg:block">
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <span class="font-bold text-gray-900">EventManager</span>
+      </div>
+      <nav class="space-y-1">
+        <a href="#dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 transition" data-page="dashboard">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          Dashboard
+        </a>
+        <a href="#events" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 transition" data-page="events">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Evenements
+        </a>
+        <a href="#event-new" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 transition" data-page="event-new">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+          Nouvel evenement
+        </a>
+      </nav>
+    </div>
+    <div class="absolute bottom-0 left-0 right-0 p-6">
+      <button onclick="doLogout()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 transition w-full">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Deconnexion
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Header -->
+  <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 px-4 py-3 flex items-center justify-between">
+    <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-gray-100">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <span class="font-bold text-gray-900">EventManager</span>
+    <button onclick="doLogout()" class="p-2 rounded-lg hover:bg-gray-100">
+      <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+    </button>
+  </div>
+
+  <!-- Mobile Menu Overlay -->
+  <div id="mobile-menu" class="fixed inset-0 bg-black/50 z-50 hidden" onclick="toggleMobileMenu()">
+    <div class="bg-white w-64 h-full p-6" onclick="event.stopPropagation()">
+      <nav class="space-y-1 mt-4">
+        <a href="#dashboard" onclick="toggleMobileMenu()" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50">Dashboard</a>
+        <a href="#events" onclick="toggleMobileMenu()" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50">Evenements</a>
+        <a href="#event-new" onclick="toggleMobileMenu()" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50">Nouvel evenement</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="lg:ml-64 pt-16 lg:pt-0">
+    <div class="p-4 lg:p-8 max-w-7xl mx-auto">
+
+      <!-- ======== DASHBOARD ======== -->
+      <div id="page-dashboard" class="page fade-in">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="dashboard-stats">
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Evenements</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1" id="stat-events">0</p>
+              </div>
+              <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Inscrits (total)</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1" id="stat-registrations">0</p>
+              </div>
+              <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-gray-500">Presents (total)</p>
+                <p class="text-3xl font-bold text-gray-900 mt-1" id="stat-checkins">0</p>
+              </div>
+              <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Prochains evenements</h2>
+        <div id="dashboard-upcoming" class="space-y-3">
+          <p class="text-gray-400 text-sm">Chargement...</p>
+        </div>
+      </div>
+
+      <!-- ======== EVENTS LIST ======== -->
+      <div id="page-events" class="page fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-2xl font-bold text-gray-900">Evenements</h1>
+          <a href="#event-new" class="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+            Nouveau
+          </a>
+        </div>
+        <div id="events-list" class="space-y-3">
+          <p class="text-gray-400 text-sm">Chargement...</p>
+        </div>
+      </div>
+
+      <!-- ======== NEW EVENT ======== -->
+      <div id="page-event-new" class="page fade-in">
+        <div class="flex items-center gap-3 mb-6">
+          <a href="#events" class="p-2 rounded-lg hover:bg-gray-100">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </a>
+          <h1 class="text-2xl font-bold text-gray-900">Nouvel evenement</h1>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Nom de l'evenement *</label>
+              <input type="text" id="evt-name" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: Conference Tech 2026">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea id="evt-description" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Description de l'evenement..."></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Date et heure *</label>
+              <input type="datetime-local" id="evt-date" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Lieu</label>
+              <input type="text" id="evt-location" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: Paris, Centre de congres">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Capacite max</label>
+              <input type="number" id="evt-capacity" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Laisser vide si illimite">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+              <select id="evt-status" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white">
+                <option value="draft">Brouillon</option>
+                <option value="published">Publie</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Nom de propriete HubSpot (pour suivi presence)</label>
+              <input type="text" id="evt-hubspot-prop" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: conference_tech_2026 (sans espaces)">
+              <p class="text-xs text-gray-400 mt-1">Ce nom sera utilise pour creer les proprietes HubSpot (inscription_X et presence_X)</p>
+            </div>
+          </div>
+
+          <!-- HubSpot Forms -->
+          <div class="mt-8 border-t border-gray-200 pt-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-900">Formulaires HubSpot lies</h3>
+              <button onclick="addFormRow()" class="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                Ajouter un formulaire
+              </button>
+            </div>
+            <div id="form-rows" class="space-y-3">
+              <!-- Form rows will be added here -->
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Ajoutez les IDs des formulaires HubSpot qui alimentent cet evenement</p>
+          </div>
+
+          <div class="mt-8 flex gap-3">
+            <button onclick="saveEvent()" class="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-xl transition">
+              Creer l'evenement
+            </button>
+            <a href="#events" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition inline-block">
+              Annuler
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== EVENT DETAIL ======== -->
+      <div id="page-event-detail" class="page fade-in">
+        <div class="flex items-center gap-3 mb-6">
+          <a href="#events" class="p-2 rounded-lg hover:bg-gray-100">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </a>
+          <h1 class="text-2xl font-bold text-gray-900" id="detail-event-name">Chargement...</h1>
+        </div>
+
+        <!-- Event Info -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide">Date</p>
+              <p class="font-medium text-gray-900 mt-1" id="detail-date">-</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide">Lieu</p>
+              <p class="font-medium text-gray-900 mt-1" id="detail-location">-</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide">Statut</p>
+              <p class="font-medium mt-1" id="detail-status">-</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide">Propriete HubSpot</p>
+              <p class="font-medium text-gray-900 mt-1" id="detail-hubspot-prop">-</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p class="text-3xl font-bold text-blue-600" id="detail-stat-registered">0</p>
+            <p class="text-sm text-gray-500 mt-1">Inscrits</p>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p class="text-3xl font-bold text-green-600" id="detail-stat-checkedin">0</p>
+            <p class="text-sm text-gray-500 mt-1">Presents</p>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p class="text-3xl font-bold text-red-500" id="detail-stat-absent">0</p>
+            <p class="text-sm text-gray-500 mt-1">Absents</p>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p class="text-3xl font-bold text-purple-600" id="detail-stat-rate">0%</p>
+            <p class="text-sm text-gray-500 mt-1">Taux de presence</p>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap gap-3 mb-6">
+          <button onclick="openScanner()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+            Scanner les QR codes
+          </button>
+          <button onclick="exportCSV()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Exporter CSV
+          </button>
+          <button onclick="deleteEvent()" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Supprimer
+          </button>
+        </div>
+
+        <!-- Linked Forms -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-3">Formulaires HubSpot lies</h3>
+          <div id="detail-forms" class="space-y-2">
+            <p class="text-gray-400 text-sm">Aucun formulaire lie</p>
+          </div>
+        </div>
+
+        <!-- Registrations Table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="p-6 border-b border-gray-100">
+            <h3 class="text-lg font-semibold text-gray-900">Liste des inscrits</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Nom</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Entreprise</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Statut</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Check-in</th>
+                </tr>
+              </thead>
+              <tbody id="detail-registrations" class="divide-y divide-gray-100">
+                <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Aucune inscription</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== SCANNER PAGE ======== -->
+      <div id="page-scanner" class="page fade-in">
+        <div class="flex items-center gap-3 mb-6">
+          <button onclick="closeScanner()" class="p-2 rounded-lg hover:bg-gray-100">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <h1 class="text-2xl font-bold text-gray-900">Scanner QR Code</h1>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Camera -->
+          <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-gray-900" id="scanner-event-name">Evenement</h3>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span class="text-gray-500">Camera active</span>
+              </div>
+            </div>
+            <div id="reader" class="rounded-xl overflow-hidden" style="width:100%"></div>
+            <div id="scanner-result" class="mt-4 p-4 rounded-xl hidden">
+              <!-- Result displayed here -->
+            </div>
+          </div>
+
+          <!-- Stats & Recent -->
+          <div class="space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 class="font-semibold text-gray-900 mb-4">Stats en direct</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="text-center p-4 bg-blue-50 rounded-xl">
+                  <p class="text-2xl font-bold text-blue-600" id="scanner-stat-total">0</p>
+                  <p class="text-xs text-gray-500">Inscrits</p>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-xl">
+                  <p class="text-2xl font-bold text-green-600" id="scanner-stat-checkedin">0</p>
+                  <p class="text-xs text-gray-500">Presents</p>
+                </div>
+              </div>
+              <!-- Progress bar -->
+              <div class="mt-4">
+                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                  <span>Progression</span>
+                  <span id="scanner-stat-percent">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                  <div id="scanner-progress-bar" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 class="font-semibold text-gray-900 mb-4">Derniers check-ins</h3>
+              <div id="scanner-recent" class="space-y-2 max-h-80 overflow-y-auto">
+                <p class="text-gray-400 text-sm">En attente du premier scan...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- AUDIO FOR CHECK-IN SOUNDS -->
+<!-- ============================================================ -->
+<audio id="sound-success" preload="auto" src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACA/4D/gP+A/5L/sv/S//L/EQAxAFEAcQCRALEA0QDxABEBMQFRAXEBkQGRAXEBUQExAREB8QDRALEAkQBxAFEAMQARAO//z/+v/4//b/9P/y/+b/2f/J/7n/qP+W/4T/cv9h/1H/Qf8y/yX/Gf8O/wX//f73/vL+7/7u/u/+8f71/vv+A/8M/xf/I/8x/0H/Uf9j/3b/iv+e/7L/xv/Z/+z//v8PAB8ALwA+AEwAWABjAGwAdAB6AH4AQAB+AHoAdABsAGMAWABMAD4ALwAfAA8A/v/s/9n/xv+y/57/iv92/2P/Uf9B/zH/I/8X/wz/A/77/vX+8f7v/u7+7/7y/vb+/f4F/w7/Gf8l/zL/Qf9R/2H/cv+E/5b/qP+5/8n/2f/m//L/9P/2/2//b/9v/w=="></audio>
+<audio id="sound-error" preload="auto" src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACA/3T/av9g/1j/UP9K/0b/RP9E/0b/Sv9Q/1j/YP9q/3T/gP+M/5j/pP+u/7j/wP/G/8r/zP/M/8r/xv/A/7j/rv+k/5j/jP+A/3T/av9g/1j/UP9K/0b/RP9E/0b/Sv9Q/1j/YP9q/3T/gP+M/5j/pP+u/7j/wP/G/8r/zP/M/8r/xv/A/7j/rv+k/5j/jP+A/3T/av9g/1j/UP9K/0b/RP9E/0b/Sv9Q/1j/YP9q/3T/gP+M/5j/pP+u/7j/wP/G/8r/zP/M/8r/xv/A/7j/rv+k/5j/jP+A/w=="></audio>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const SUPABASE_URL = 'https://jhopwqpbaiyjfoggvcaf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impob3B3cXBiYWl5amZvZ2d2Y2FmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTI2OTEsImV4cCI6MjA4ODYyODY5MX0.rz3TJZryPxEf3P5kQgpzQkwN9aF8_F4eo4F03CEYVPs';
+const ADMIN_EMAIL = 'aaron@diploma-sante.fr';
+const ADMIN_PASSWORD = 'Neorah1105@!';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentEventId = null;
+let scannerInstance = null;
+let scannerEventId = null;
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  if (email === ADMIN_EMAIL && pw === ADMIN_PASSWORD) {
+    localStorage.setItem('auth', 'true');
+    showApp();
+    navigate('dashboard');
+  } else {
+    showToast('Email ou mot de passe incorrect', 'error');
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('auth');
+  document.getElementById('app-layout').style.display = 'none';
+  document.getElementById('page-login').classList.add('active');
+}
+
+function showApp() {
+  document.getElementById('page-login').classList.remove('active');
+  document.getElementById('app-layout').style.display = 'block';
+}
+
+function checkAuth() {
+  if (localStorage.getItem('auth') === 'true') {
+    showApp();
+    return true;
+  }
+  return false;
+}
+
+// ============================================================
+// ROUTING
+// ============================================================
+function navigate(page) {
+  window.location.hash = page;
+}
+
+function handleRoute() {
+  if (!checkAuth()) return;
+
+  const hash = window.location.hash.slice(1) || 'dashboard';
+  const parts = hash.split('/');
+  const page = parts[0];
+  const id = parts[1];
+
+  // Hide all pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+  // Update nav
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.classList.remove('bg-primary-50', 'text-primary-700');
+    link.classList.add('text-gray-600');
+    if (link.dataset.page === page) {
+      link.classList.add('bg-primary-50', 'text-primary-700');
+      link.classList.remove('text-gray-600');
+    }
+  });
+
+  // Stop scanner if leaving scanner page
+  if (page !== 'scan' && scannerInstance) {
+    try { scannerInstance.stop(); } catch(e) {}
+    scannerInstance = null;
+  }
+
+  switch(page) {
+    case 'dashboard':
+      document.getElementById('page-dashboard').classList.add('active');
+      loadDashboard();
+      break;
+    case 'events':
+      document.getElementById('page-events').classList.add('active');
+      loadEvents();
+      break;
+    case 'event-new':
+      document.getElementById('page-event-new').classList.add('active');
+      resetEventForm();
+      break;
+    case 'event':
+      if (id) {
+        currentEventId = id;
+        document.getElementById('page-event-detail').classList.add('active');
+        loadEventDetail(id);
+      }
+      break;
+    case 'scan':
+      if (id) {
+        scannerEventId = id;
+        document.getElementById('page-scanner').classList.add('active');
+        startScanner(id);
+      }
+      break;
+    default:
+      document.getElementById('page-dashboard').classList.add('active');
+      loadDashboard();
+  }
+}
+
+window.addEventListener('hashchange', handleRoute);
+
+// ============================================================
+// MOBILE MENU
+// ============================================================
+function toggleMobileMenu() {
+  document.getElementById('mobile-menu').classList.toggle('hidden');
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function loadDashboard() {
+  const { data: events } = await supabase.from('events').select('*').order('event_date', { ascending: true });
+  const { data: registrations } = await supabase.from('registrations').select('checked_in');
+
+  const totalEvents = events?.length || 0;
+  const totalRegs = registrations?.length || 0;
+  const totalCheckins = registrations?.filter(r => r.checked_in).length || 0;
+
+  document.getElementById('stat-events').textContent = totalEvents;
+  document.getElementById('stat-registrations').textContent = totalRegs;
+  document.getElementById('stat-checkins').textContent = totalCheckins;
+
+  // Upcoming events
+  const upcoming = events?.filter(e => new Date(e.event_date) >= new Date()) || [];
+  const container = document.getElementById('dashboard-upcoming');
+
+  if (upcoming.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm">Aucun evenement a venir</p>';
+    return;
+  }
+
+  container.innerHTML = upcoming.slice(0, 5).map(e => `
+    <a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="font-semibold text-gray-900">${esc(e.name)}</p>
+          <p class="text-sm text-gray-500">${formatDate(e.event_date)} - ${esc(e.location || 'Lieu non defini')}</p>
+        </div>
+        <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
+      </div>
+    </a>
+  `).join('');
+}
+
+// ============================================================
+// EVENTS LIST
+// ============================================================
+async function loadEvents() {
+  const { data: events } = await supabase.from('events').select('*').order('event_date', { ascending: false });
+
+  const container = document.getElementById('events-list');
+
+  if (!events || events.length === 0) {
+    container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center border border-gray-100"><p class="text-gray-400">Aucun evenement. <a href="#event-new" class="text-primary-600 hover:underline">Creer le premier</a></p></div>';
+    return;
+  }
+
+  container.innerHTML = events.map(e => `
+    <a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="font-semibold text-gray-900">${esc(e.name)}</p>
+          <p class="text-sm text-gray-500">${formatDate(e.event_date)} - ${esc(e.location || 'Lieu non defini')}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+    </a>
+  `).join('');
+}
+
+// ============================================================
+// CREATE EVENT
+// ============================================================
+function resetEventForm() {
+  document.getElementById('evt-name').value = '';
+  document.getElementById('evt-description').value = '';
+  document.getElementById('evt-date').value = '';
+  document.getElementById('evt-location').value = '';
+  document.getElementById('evt-capacity').value = '';
+  document.getElementById('evt-status').value = 'draft';
+  document.getElementById('evt-hubspot-prop').value = '';
+  document.getElementById('form-rows').innerHTML = '';
+  addFormRow();
+}
+
+function addFormRow() {
+  const container = document.getElementById('form-rows');
+  const row = document.createElement('div');
+  row.className = 'flex gap-3 items-center';
+  row.innerHTML = `
+    <input type="text" placeholder="ID du formulaire HubSpot" class="form-hubspot-id flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm">
+    <input type="text" placeholder="Nom du formulaire" class="form-hubspot-name flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm">
+    <button onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  `;
+  container.appendChild(row);
+}
+
+async function saveEvent() {
+  const name = document.getElementById('evt-name').value.trim();
+  const description = document.getElementById('evt-description').value.trim();
+  const eventDate = document.getElementById('evt-date').value;
+  const location = document.getElementById('evt-location').value.trim();
+  const capacity = document.getElementById('evt-capacity').value;
+  const status = document.getElementById('evt-status').value;
+  const hubspotProp = document.getElementById('evt-hubspot-prop').value.trim();
+
+  if (!name || !eventDate) {
+    showToast('Nom et date sont obligatoires', 'error');
+    return;
+  }
+
+  // Insert event
+  const { data: event, error } = await supabase.from('events').insert({
+    name,
+    description: description || null,
+    event_date: eventDate,
+    location: location || null,
+    max_capacity: capacity ? parseInt(capacity) : null,
+    status,
+    hubspot_property_name: hubspotProp || null
+  }).select().single();
+
+  if (error) {
+    showToast('Erreur: ' + error.message, 'error');
+    return;
+  }
+
+  // Insert forms
+  const formRows = document.querySelectorAll('#form-rows > div');
+  const forms = [];
+  formRows.forEach(row => {
+    const formId = row.querySelector('.form-hubspot-id').value.trim();
+    const formName = row.querySelector('.form-hubspot-name').value.trim();
+    if (formId) {
+      forms.push({ event_id: event.id, hubspot_form_id: formId, form_name: formName || null });
+    }
+  });
+
+  if (forms.length > 0) {
+    await supabase.from('event_forms').insert(forms);
+  }
+
+  showToast('Evenement cree avec succes !');
+  navigate('event/' + event.id);
+}
+
+// ============================================================
+// EVENT DETAIL
+// ============================================================
+async function loadEventDetail(id) {
+  const { data: event, error } = await supabase.from('events').select('*').eq('id', id).single();
+  if (error || !event) {
+    showToast('Evenement introuvable', 'error');
+    navigate('events');
+    return;
+  }
+
+  document.getElementById('detail-event-name').textContent = event.name;
+  document.getElementById('detail-date').textContent = formatDate(event.event_date);
+  document.getElementById('detail-location').textContent = event.location || 'Non defini';
+  document.getElementById('detail-hubspot-prop').textContent = event.hubspot_property_name || 'Non defini';
+
+  const statusEl = document.getElementById('detail-status');
+  statusEl.innerHTML = `<span class="text-xs px-3 py-1 rounded-full ${statusClass(event.status)}">${statusLabel(event.status)}</span>`;
+
+  // Load forms
+  const { data: forms } = await supabase.from('event_forms').select('*').eq('event_id', id);
+  const formsContainer = document.getElementById('detail-forms');
+  if (forms && forms.length > 0) {
+    formsContainer.innerHTML = forms.map(f => `
+      <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+        <span class="text-xs font-mono bg-gray-200 px-2 py-1 rounded">${esc(f.hubspot_form_id)}</span>
+        <span class="text-sm text-gray-700">${esc(f.form_name || 'Sans nom')}</span>
+      </div>
+    `).join('');
+  } else {
+    formsContainer.innerHTML = '<p class="text-gray-400 text-sm">Aucun formulaire lie</p>';
+  }
+
+  // Load registrations
+  const { data: registrations } = await supabase.from('registrations').select('*').eq('event_id', id).order('registered_at', { ascending: false });
+
+  const regs = registrations || [];
+  const total = regs.length;
+  const checkedIn = regs.filter(r => r.checked_in).length;
+  const absent = total - checkedIn;
+  const rate = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
+
+  document.getElementById('detail-stat-registered').textContent = total;
+  document.getElementById('detail-stat-checkedin').textContent = checkedIn;
+  document.getElementById('detail-stat-absent').textContent = absent;
+  document.getElementById('detail-stat-rate').textContent = rate + '%';
+
+  const tbody = document.getElementById('detail-registrations');
+  if (regs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Aucune inscription pour le moment</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = regs.map(r => `
+    <tr class="hover:bg-gray-50">
+      <td class="px-6 py-4 text-sm font-medium text-gray-900">${esc(r.first_name || '')} ${esc(r.last_name || '')}</td>
+      <td class="px-6 py-4 text-sm text-gray-500">${esc(r.email)}</td>
+      <td class="px-6 py-4 text-sm text-gray-500">${esc(r.company || '-')}</td>
+      <td class="px-6 py-4">
+        ${r.checked_in
+          ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Present</span>'
+          : '<span class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full"><span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>En attente</span>'
+        }
+      </td>
+      <td class="px-6 py-4 text-sm text-gray-500">${r.checked_in_at ? formatDateTime(r.checked_in_at) : '-'}</td>
+    </tr>
+  `).join('');
+}
+
+async function deleteEvent() {
+  if (!currentEventId) return;
+  if (!confirm('Supprimer cet evenement et toutes ses inscriptions ?')) return;
+
+  const { error } = await supabase.from('events').delete().eq('id', currentEventId);
+  if (error) {
+    showToast('Erreur: ' + error.message, 'error');
+    return;
+  }
+  showToast('Evenement supprime');
+  navigate('events');
+}
+
+function exportCSV() {
+  const rows = document.querySelectorAll('#detail-registrations tr');
+  if (rows.length === 0) return;
+
+  let csv = 'Nom,Email,Entreprise,Statut,Check-in\n';
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (cells.length >= 5) {
+      const name = cells[0].textContent.trim();
+      const email = cells[1].textContent.trim();
+      const company = cells[2].textContent.trim();
+      const status = cells[3].textContent.trim();
+      const checkin = cells[4].textContent.trim();
+      csv += `"${name}","${email}","${company}","${status}","${checkin}"\n`;
+    }
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `inscriptions_${currentEventId}.csv`;
+  link.click();
+}
+
+// ============================================================
+// QR SCANNER
+// ============================================================
+function openScanner() {
+  if (!currentEventId) return;
+  navigate('scan/' + currentEventId);
+}
+
+function closeScanner() {
+  if (scannerInstance) {
+    try { scannerInstance.stop(); } catch(e) {}
+    scannerInstance = null;
+  }
+  if (scannerEventId) {
+    navigate('event/' + scannerEventId);
+  } else {
+    navigate('events');
+  }
+}
+
+async function startScanner(eventId) {
+  // Load event name
+  const { data: event } = await supabase.from('events').select('name').eq('id', eventId).single();
+  document.getElementById('scanner-event-name').textContent = event?.name || 'Evenement';
+
+  // Load stats
+  await updateScannerStats(eventId);
+
+  // Reset recent
+  document.getElementById('scanner-recent').innerHTML = '<p class="text-gray-400 text-sm">En attente du premier scan...</p>';
+  document.getElementById('scanner-result').classList.add('hidden');
+
+  // Wait for DOM to be ready
+  await new Promise(r => setTimeout(r, 300));
+
+  // Start camera
+  try {
+    scannerInstance = new Html5Qrcode('reader');
+    await scannerInstance.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      onScanSuccess,
+      () => {} // ignore errors during scanning
+    );
+  } catch (err) {
+    console.error('Camera error:', err);
+    showToast('Impossible d\'acceder a la camera', 'error');
+  }
+}
+
+let lastScannedCode = '';
+let lastScanTime = 0;
+
+async function onScanSuccess(decodedText) {
+  // Debounce - ignore same code within 3 seconds
+  const now = Date.now();
+  if (decodedText === lastScannedCode && (now - lastScanTime) < 3000) return;
+  lastScannedCode = decodedText;
+  lastScanTime = now;
+
+  // Extract code from URL
+  let code = decodedText;
+  if (decodedText.includes('code=')) {
+    const url = new URL(decodedText);
+    code = url.searchParams.get('code') || decodedText;
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/checkin?code=${encodeURIComponent(code)}`);
+    const result = await response.json();
+
+    const resultDiv = document.getElementById('scanner-result');
+    resultDiv.classList.remove('hidden');
+
+    if (result.status === 'checked_in') {
+      resultDiv.className = 'mt-4 p-4 rounded-xl bg-green-50 border-2 border-green-500';
+      resultDiv.innerHTML = `
+        <div class="flex items-center gap-3">
+          <svg class="w-8 h-8 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <p class="font-bold text-green-800">${esc(result.first_name)} ${esc(result.last_name)}</p>
+            <p class="text-sm text-green-600">${esc(result.company || result.email)}</p>
+          </div>
+        </div>
+      `;
+      try { document.getElementById('sound-success').play(); } catch(e) {}
+      addRecentScan(result, 'success');
+
+    } else if (result.status === 'already_checked_in') {
+      resultDiv.className = 'mt-4 p-4 rounded-xl bg-yellow-50 border-2 border-yellow-500';
+      resultDiv.innerHTML = `
+        <div class="flex items-center gap-3">
+          <svg class="w-8 h-8 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+          <div>
+            <p class="font-bold text-yellow-800">${esc(result.first_name)} ${esc(result.last_name)}</p>
+            <p class="text-sm text-yellow-600">Deja enregistre(e)</p>
+          </div>
+        </div>
+      `;
+      try { document.getElementById('sound-error').play(); } catch(e) {}
+      addRecentScan(result, 'warning');
+
+    } else {
+      resultDiv.className = 'mt-4 p-4 rounded-xl bg-red-50 border-2 border-red-500';
+      resultDiv.innerHTML = `
+        <div class="flex items-center gap-3">
+          <svg class="w-8 h-8 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <p class="font-bold text-red-800">QR code invalide</p>
+            <p class="text-sm text-red-600">${esc(result.message || 'Inscription introuvable')}</p>
+          </div>
+        </div>
+      `;
+      try { document.getElementById('sound-error').play(); } catch(e) {}
+    }
+
+    // Update stats
+    await updateScannerStats(scannerEventId);
+
+  } catch (err) {
+    console.error('Check-in error:', err);
+    showToast('Erreur de check-in', 'error');
+  }
+}
+
+function addRecentScan(result, type) {
+  const container = document.getElementById('scanner-recent');
+  // Remove placeholder text
+  const placeholder = container.querySelector('p.text-gray-400');
+  if (placeholder) placeholder.remove();
+
+  const colors = { success: 'green', warning: 'yellow', error: 'red' };
+  const color = colors[type] || 'gray';
+  const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  const item = document.createElement('div');
+  item.className = `flex items-center justify-between p-3 bg-${color}-50 rounded-xl fade-in`;
+  item.innerHTML = `
+    <div>
+      <p class="font-medium text-sm text-gray-900">${esc(result.first_name || '')} ${esc(result.last_name || '')}</p>
+      <p class="text-xs text-gray-500">${esc(result.email || '')}</p>
+    </div>
+    <span class="text-xs text-gray-400">${time}</span>
+  `;
+  container.insertBefore(item, container.firstChild);
+}
+
+async function updateScannerStats(eventId) {
+  const { data: regs } = await supabase.from('registrations').select('checked_in').eq('event_id', eventId);
+  const total = regs?.length || 0;
+  const checkedIn = regs?.filter(r => r.checked_in).length || 0;
+  const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
+
+  document.getElementById('scanner-stat-total').textContent = total;
+  document.getElementById('scanner-stat-checkedin').textContent = checkedIn;
+  document.getElementById('scanner-stat-percent').textContent = percent + '%';
+  document.getElementById('scanner-progress-bar').style.width = percent + '%';
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function formatDateTime(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function statusClass(status) {
+  switch(status) {
+    case 'published': return 'bg-green-100 text-green-800';
+    case 'draft': return 'bg-gray-100 text-gray-800';
+    case 'completed': return 'bg-blue-100 text-blue-800';
+    case 'cancelled': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+}
+
+function statusLabel(status) {
+  switch(status) {
+    case 'published': return 'Publie';
+    case 'draft': return 'Brouillon';
+    case 'completed': return 'Termine';
+    case 'cancelled': return 'Annule';
+    default: return status;
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  handleRoute();
+});
+
+window.addEventListener('hashchange', handleRoute);
+</script>
+</body>
+</html>
