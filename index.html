@@ -263,15 +263,21 @@
           <div class="mt-8 border-t border-gray-200 pt-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold text-gray-900">Formulaires HubSpot lies</h3>
-              <button onclick="addFormRow()" class="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                Ajouter un formulaire
+              <button onclick="refreshHubspotForms()" class="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Rafraichir
               </button>
             </div>
-            <div id="form-rows" class="space-y-3">
-              <!-- Form rows will be added here -->
+            <div class="relative mb-3">
+              <input type="text" id="form-search" placeholder="Rechercher un formulaire HubSpot..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                oninput="filterForms()">
+              <svg class="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
-            <p class="text-xs text-gray-400 mt-2">Ajoutez les IDs des formulaires HubSpot qui alimentent cet evenement</p>
+            <div id="form-checkboxes" class="max-h-64 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-1">
+              <p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires HubSpot...</p>
+            </div>
+            <div id="selected-forms-count" class="text-xs text-gray-500 mt-2">0 formulaire(s) selectionne(s)</div>
           </div>
 
           <div class="mt-8 flex gap-3">
@@ -661,6 +667,8 @@ async function loadEvents() {
 // ============================================================
 // CREATE EVENT
 // ============================================================
+let hubspotFormsCache = [];
+
 function resetEventForm() {
   document.getElementById('evt-name').value = '';
   document.getElementById('evt-description').value = '';
@@ -669,22 +677,55 @@ function resetEventForm() {
   document.getElementById('evt-capacity').value = '';
   document.getElementById('evt-status').value = 'draft';
   document.getElementById('evt-hubspot-prop').value = '';
-  document.getElementById('form-rows').innerHTML = '';
-  addFormRow();
+  document.getElementById('form-search').value = '';
+  loadHubspotForms();
 }
 
-function addFormRow() {
-  const container = document.getElementById('form-rows');
-  const row = document.createElement('div');
-  row.className = 'flex gap-3 items-center';
-  row.innerHTML = `
-    <input type="text" placeholder="ID du formulaire HubSpot" class="form-hubspot-id flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm">
-    <input type="text" placeholder="Nom du formulaire" class="form-hubspot-name flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm">
-    <button onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-  `;
-  container.appendChild(row);
+async function loadHubspotForms() {
+  const container = document.getElementById('form-checkboxes');
+  container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires HubSpot...</p>';
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/hubspot-forms`);
+    const data = await res.json();
+    hubspotFormsCache = data.forms || [];
+    renderFormCheckboxes(hubspotFormsCache);
+  } catch (e) {
+    container.innerHTML = '<p class="text-red-400 text-sm text-center py-4">Erreur de chargement des formulaires</p>';
+  }
+}
+
+function refreshHubspotForms() {
+  hubspotFormsCache = [];
+  loadHubspotForms();
+}
+
+function filterForms() {
+  const query = document.getElementById('form-search').value.toLowerCase();
+  const filtered = hubspotFormsCache.filter(f => f.name.toLowerCase().includes(query));
+  renderFormCheckboxes(filtered);
+}
+
+function renderFormCheckboxes(forms) {
+  const container = document.getElementById('form-checkboxes');
+  if (forms.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Aucun formulaire trouve</p>';
+    return;
+  }
+  container.innerHTML = forms.map(f => `
+    <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+      <input type="checkbox" class="form-checkbox w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+        value="${esc(f.id)}" data-name="${esc(f.name)}" onchange="updateSelectedCount()">
+      <span class="text-sm text-gray-700 flex-1">${esc(f.name)}</span>
+      <span class="text-xs text-gray-400">${f.createdAt ? f.createdAt.slice(0,10) : ''}</span>
+    </label>
+  `).join('');
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const checked = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
+  document.getElementById('selected-forms-count').textContent = `${checked.length} formulaire(s) selectionne(s)`;
 }
 
 async function saveEvent() {
@@ -717,15 +758,11 @@ async function saveEvent() {
     return;
   }
 
-  // Insert forms
-  const formRows = document.querySelectorAll('#form-rows > div');
+  // Insert forms from checkboxes
+  const checkedBoxes = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
   const forms = [];
-  formRows.forEach(row => {
-    const formId = row.querySelector('.form-hubspot-id').value.trim();
-    const formName = row.querySelector('.form-hubspot-name').value.trim();
-    if (formId) {
-      forms.push({ event_id: event.id, hubspot_form_id: formId, form_name: formName || null });
-    }
+  checkedBoxes.forEach(cb => {
+    forms.push({ event_id: event.id, hubspot_form_id: cb.value, form_name: cb.dataset.name || null });
   });
 
   if (forms.length > 0) {
