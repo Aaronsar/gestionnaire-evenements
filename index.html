@@ -464,7 +464,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const ADMIN_EMAIL = 'aaron@diploma-sante.fr';
 const ADMIN_PASSWORD = 'Neorah1105@!';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentEventId = null;
 let scannerInstance = null;
@@ -596,8 +596,8 @@ function toggleMobileMenu() {
 // DASHBOARD
 // ============================================================
 async function loadDashboard() {
-  const { data: events } = await supabase.from('events').select('*').order('event_date', { ascending: true });
-  const { data: registrations } = await supabase.from('registrations').select('checked_in');
+  const { data: events } = await db.from('events').select('*').order('event_date', { ascending: true });
+  const { data: registrations } = await db.from('registrations').select('checked_in');
 
   const totalEvents = events?.length || 0;
   const totalRegs = registrations?.length || 0;
@@ -633,7 +633,7 @@ async function loadDashboard() {
 // EVENTS LIST
 // ============================================================
 async function loadEvents() {
-  const { data: events } = await supabase.from('events').select('*').order('event_date', { ascending: false });
+  const { data: events } = await db.from('events').select('*').order('event_date', { ascending: false });
 
   const container = document.getElementById('events-list');
 
@@ -702,7 +702,7 @@ async function saveEvent() {
   }
 
   // Insert event
-  const { data: event, error } = await supabase.from('events').insert({
+  const { data: event, error } = await db.from('events').insert({
     name,
     description: description || null,
     event_date: eventDate,
@@ -729,7 +729,7 @@ async function saveEvent() {
   });
 
   if (forms.length > 0) {
-    await supabase.from('event_forms').insert(forms);
+    await db.from('event_forms').insert(forms);
   }
 
   showToast('Evenement cree avec succes !');
@@ -740,7 +740,7 @@ async function saveEvent() {
 // EVENT DETAIL
 // ============================================================
 async function loadEventDetail(id) {
-  const { data: event, error } = await supabase.from('events').select('*').eq('id', id).single();
+  const { data: event, error } = await db.from('events').select('*').eq('id', id).single();
   if (error || !event) {
     showToast('Evenement introuvable', 'error');
     navigate('events');
@@ -756,7 +756,7 @@ async function loadEventDetail(id) {
   statusEl.innerHTML = `<span class="text-xs px-3 py-1 rounded-full ${statusClass(event.status)}">${statusLabel(event.status)}</span>`;
 
   // Load forms
-  const { data: forms } = await supabase.from('event_forms').select('*').eq('event_id', id);
+  const { data: forms } = await db.from('event_forms').select('*').eq('event_id', id);
   const formsContainer = document.getElementById('detail-forms');
   if (forms && forms.length > 0) {
     formsContainer.innerHTML = forms.map(f => `
@@ -770,7 +770,7 @@ async function loadEventDetail(id) {
   }
 
   // Load registrations
-  const { data: registrations } = await supabase.from('registrations').select('*').eq('event_id', id).order('registered_at', { ascending: false });
+  const { data: registrations } = await db.from('registrations').select('*').eq('event_id', id).order('registered_at', { ascending: false });
 
   const regs = registrations || [];
   const total = regs.length;
@@ -809,7 +809,7 @@ async function deleteEvent() {
   if (!currentEventId) return;
   if (!confirm('Supprimer cet evenement et toutes ses inscriptions ?')) return;
 
-  const { error } = await supabase.from('events').delete().eq('id', currentEventId);
+  const { error } = await db.from('events').delete().eq('id', currentEventId);
   if (error) {
     showToast('Erreur: ' + error.message, 'error');
     return;
@@ -864,7 +864,7 @@ function closeScanner() {
 
 async function startScanner(eventId) {
   // Load event name
-  const { data: event } = await supabase.from('events').select('name').eq('id', eventId).single();
+  const { data: event } = await db.from('events').select('name').eq('id', eventId).single();
   document.getElementById('scanner-event-name').textContent = event?.name || 'Evenement';
 
   // Load stats
@@ -990,7 +990,7 @@ function addRecentScan(result, type) {
 }
 
 async function updateScannerStats(eventId) {
-  const { data: regs } = await supabase.from('registrations').select('checked_in').eq('event_id', eventId);
+  const { data: regs } = await db.from('registrations').select('checked_in').eq('event_id', eventId);
   const total = regs?.length || 0;
   const checkedIn = regs?.filter(r => r.checked_in).length || 0;
   const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
