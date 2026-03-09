@@ -234,12 +234,32 @@
               <textarea id="evt-description" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Description de l'evenement..."></textarea>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Date et heure *</label>
-              <input type="datetime-local" id="evt-date" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Date *</label>
+              <input type="date" id="evt-date" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Lieu</label>
-              <input type="text" id="evt-location" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: Paris, Centre de congres">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Campus *</label>
+              <select id="evt-location" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white" onchange="toggleVisioFields()">
+                <option value="">-- Choisir un lieu --</option>
+                <option value="100 quai de la Rapee, 75012 Paris">100 quai de la Rapee - Paris 12e</option>
+                <option value="85 avenue Ledru Rollin, 75012 Paris">85 avenue Ledru Rollin - Paris 12e</option>
+                <option value="29 rue Lauriston, 75016 Paris">29 rue Lauriston - Paris 16e</option>
+                <option value="visio">En visioconference</option>
+              </select>
+              <div id="visio-link-container" class="hidden mt-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lien de visioconference *</label>
+                <input type="url" id="evt-visio-link" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: https://zoom.us/j/123456789">
+                <p class="text-xs text-gray-400 mt-1">Pas de QR code en visio. Rappels : J-3, J-1, J-J (matin + 11h + 14h + 5min avant)</p>
+              </div>
+            </div>
+            <!-- Time fields: range for physical, single for visio -->
+            <div id="time-range-fields">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Heure de debut *</label>
+              <input type="time" id="evt-time-start" value="14:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+            </div>
+            <div id="time-end-field">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Heure de fin *</label>
+              <input type="time" id="evt-time-end" value="18:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Capacite max</label>
@@ -640,7 +660,7 @@ async function loadDashboard() {
       <div class="flex items-center justify-between">
         <div>
           <p class="font-semibold text-gray-900">${esc(e.name)}</p>
-          <p class="text-sm text-gray-500">${formatDate(e.event_date)} - ${esc(e.location || 'Lieu non defini')}</p>
+          <p class="text-sm text-gray-500">${formatEventSummary(e)}</p>
         </div>
         <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
       </div>
@@ -666,7 +686,7 @@ async function loadEvents() {
       <div class="flex items-center justify-between">
         <div>
           <p class="font-semibold text-gray-900">${esc(e.name)}</p>
-          <p class="text-sm text-gray-500">${formatDate(e.event_date)} - ${esc(e.location || 'Lieu non defini')}</p>
+          <p class="text-sm text-gray-500">${formatEventSummary(e)}</p>
         </div>
         <div class="flex items-center gap-3">
           <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
@@ -680,6 +700,17 @@ async function loadEvents() {
 // ============================================================
 // CREATE EVENT
 // ============================================================
+function toggleVisioFields() {
+  const isVisio = document.getElementById('evt-location').value === 'visio';
+  document.getElementById('visio-link-container').classList.toggle('hidden', !isVisio);
+  document.getElementById('time-end-field').classList.toggle('hidden', isVisio);
+  if (isVisio) {
+    document.querySelector('#time-range-fields label').textContent = 'Heure de la visio *';
+  } else {
+    document.querySelector('#time-range-fields label').textContent = 'Heure de debut *';
+  }
+}
+
 let hubspotFormsCache = [];
 
 function resetEventForm() {
@@ -687,6 +718,10 @@ function resetEventForm() {
   document.getElementById('evt-description').value = '';
   document.getElementById('evt-date').value = '';
   document.getElementById('evt-location').value = '';
+  document.getElementById('evt-visio-link').value = '';
+  document.getElementById('visio-link-container').classList.add('hidden');
+  document.getElementById('evt-time-start').value = '14:00';
+  document.getElementById('evt-time-end').value = '18:00';
   document.getElementById('evt-capacity').value = '';
   document.getElementById('evt-status').value = 'draft';
   document.getElementById('evt-hubspot-prop').value = '';
@@ -745,17 +780,33 @@ function updateSelectedCount() {
 async function saveEvent() {
   const name = document.getElementById('evt-name').value.trim();
   const description = document.getElementById('evt-description').value.trim();
-  const eventDate = document.getElementById('evt-date').value;
-  const location = document.getElementById('evt-location').value.trim();
+  const evtDate = document.getElementById('evt-date').value;
+  const evtTimeStart = document.getElementById('evt-time-start').value;
+  const evtTimeEnd = document.getElementById('evt-time-end').value;
+  const location = document.getElementById('evt-location').value;
   const capacity = document.getElementById('evt-capacity').value;
   const status = document.getElementById('evt-status').value;
   const hubspotProp = document.getElementById('evt-hubspot-prop').value.trim();
   const smsFactorEnabled = document.getElementById('evt-sms-factor').checked;
 
-  if (!name || !eventDate) {
-    showToast('Nom et date sont obligatoires', 'error');
+  const isVisio = location === 'visio';
+  const visioLink = isVisio ? document.getElementById('evt-visio-link').value.trim() : null;
+  const locationLabel = isVisio ? 'Visioconference' : location;
+
+  if (!name || !evtDate || !evtTimeStart || !location) {
+    showToast('Nom, date, heure et lieu sont obligatoires', 'error');
     return;
   }
+  if (!isVisio && !evtTimeEnd) {
+    showToast('Heure de fin obligatoire pour un evenement physique', 'error');
+    return;
+  }
+  if (isVisio && !visioLink) {
+    showToast('Le lien de visioconference est obligatoire', 'error');
+    return;
+  }
+
+  const eventDate = `${evtDate}T${evtTimeStart}`;
 
   const saveBtn = document.querySelector('#page-event-new button[onclick="saveEvent()"]');
   const origText = saveBtn.textContent;
@@ -763,16 +814,20 @@ async function saveEvent() {
   saveBtn.textContent = 'Creation en cours...';
 
   try {
+    saveBtn.textContent = 'Creation en cours...';
+
     // Insert event
     const { data: event, error } = await db.from('events').insert({
       name,
       description: description || null,
       event_date: eventDate,
-      location: location || null,
+      event_time_end: isVisio ? null : evtTimeEnd,
+      location: locationLabel,
       max_capacity: capacity ? parseInt(capacity) : null,
       status,
       hubspot_property_name: hubspotProp || null,
-      sms_factor_enabled: smsFactorEnabled
+      sms_factor_enabled: smsFactorEnabled,
+      zoom_join_url: visioLink
     }).select().single();
 
     if (error) {
@@ -837,7 +892,10 @@ async function loadEventDetail(id) {
   }
 
   document.getElementById('detail-event-name').textContent = event.name;
-  document.getElementById('detail-date').textContent = formatDate(event.event_date);
+  const startTime = new Date(event.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const endTime = event.event_time_end || '';
+  const dateLabel = formatDate(event.event_date) + (endTime ? ` de ${startTime} a ${endTime}` : ` a ${startTime}`);
+  document.getElementById('detail-date').textContent = dateLabel;
   document.getElementById('detail-location').textContent = event.location || 'Non defini';
   document.getElementById('detail-hubspot-prop').textContent = event.hubspot_property_name || 'Non defini';
 
@@ -846,6 +904,9 @@ async function loadEventDetail(id) {
   let badges = '';
   if (event.sms_factor_enabled) {
     badges += '<span class="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium">SMS Factor actif</span>';
+  }
+  if (event.zoom_join_url) {
+    badges += `<a href="${esc(event.zoom_join_url)}" target="_blank" class="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition">Zoom ↗</a>`;
   }
   if (event.hubspot_workflow_id) {
     badges += `<a href="https://app-eu1.hubspot.com/workflows/${event.hubspot_workflow_id}" target="_blank" class="text-xs px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-medium hover:bg-orange-200 transition">Workflow HubSpot ↗</a>`;
@@ -1120,6 +1181,13 @@ function formatDateTime(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
     d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatEventSummary(e) {
+  const startTime = new Date(e.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const endTime = e.event_time_end || '';
+  const timeStr = endTime ? `${startTime}-${endTime}` : startTime;
+  return `${formatDate(e.event_date)} (${timeStr}) - ${esc(e.location || 'Lieu non defini')}`;
 }
 
 function statusClass(status) {
