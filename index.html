@@ -1533,7 +1533,7 @@ function renderPreviews(ev) {
   document.getElementById('email-tabs').innerHTML = emailTypes.map((t,i) =>
     `<button onclick="showEmailTab('${t.id}')" class="email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${i===0?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-tab="${t.id}">${t.lb}</button>`
   ).join('');
-  currentEmailTab = emailTypes[0].id;
+  currentEmailTab = null; // Reset to prevent saving stale field values
   showEmailTab(emailTypes[0].id);
 
   const checkinUrl = `${SUPABASE_URL}/functions/v1/checkin?code=PREVIEW123`;
@@ -1623,7 +1623,7 @@ function pvDetailTbl(ev) {
 function pvConfEmail(ev, customBody) {
   const vis = !!ev.zoom_join_url; const access = pvAccess(ev);
   const tip = vis ? 'Gardez le <strong style="color:#1C2436;">lien de connexion</strong> ci-dessus \u00e0 port\u00e9e de main pour le jour J.' : 'Astuce : faites une <strong style="color:#1C2436;">capture d\'\u00e9cran</strong> du QR code pour y acc\u00e9der facilement.';
-  const heroSub = (customBody||'').trim() ? esc(customBody).replace(/\{prenom\}/g,'<strong style="color:#1C2436;">Jean</strong>') : `Merci pour votre inscription ! Nous avons h\u00e2te de vous accueillir. ${vis?'Le lien de connexion':'Votre QR code personnel'} se trouve ci-dessous.`;
+  const heroSub = (customBody||'').trim() ? esc(customBody).replace(/\{prenom\}/g,'<strong style="color:#C2AB82;">Jean</strong>') : `Merci pour votre inscription ! Nous avons h\u00e2te de vous accueillir. ${vis?'Le lien de connexion':'Votre QR code personnel'} se trouve ci-dessous.`;
   return pvWrap('<em style="font-style:italic;color:#C2AB82;">Votre inscription</em><br>est confirm\u00e9e !', heroSub,
     `${pvDetailTbl(ev)}${pvBrief(ev)}${access}<div style="background:#F5F2EC;border-left:4px solid #C2AB82;border-radius:0 12px 12px 0;padding:20px 24px;"><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;font-style:italic;">${tip}</p></div>`, '');
 }
