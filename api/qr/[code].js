@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   try {
     const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/registrations?select=first_name,last_name,qr_code,events(name,event_date,event_time_end,location,zoom_join_url)&qr_code=eq.${code}&limit=1`,
+      `${SUPABASE_URL}/rest/v1/registrations?select=first_name,last_name,qr_code,events(name,article,event_date,event_time_end,location,zoom_join_url)&qr_code=eq.${code}&limit=1`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     const data = await resp.json();
@@ -27,6 +27,15 @@ export default async function handler(req, res) {
     const lieu = isVisio ? 'En ligne (visioconf\u00e9rence)' : (ev.location || '\u00c0 confirmer');
     const qrImageUrl = `${SUPABASE_URL}/functions/v1/qr-image?code=${code}`;
     const fullName = `${reg.first_name || ''} ${reg.last_name || ''}`.trim() || 'Participant';
+
+    // Build "à la Journée" / "au Gala" / "à l'Événement"
+    const art = ev.article || 'la';
+    let aLa;
+    if (art === "l'") aLa = "\u00e0 l'";
+    else if (art === 'le') aLa = 'au ';
+    else if (art === 'les') aLa = 'aux ';
+    else aLa = '\u00e0 ' + art + ' ';
+    const eventFullName = aLa + ev.name;
 
     const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -75,7 +84,7 @@ body{min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;
     <div class="check">
       <svg viewBox="0 0 24 24" fill="none" stroke="#C2AB82" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h1 class="title">Votre participation \u00e0 ${ev.name} est confirm\u00e9e !</h1>
+    <h1 class="title">Votre participation ${eventFullName} est confirm\u00e9e !</h1>
     <p class="subtitle">Vous trouverez ci-dessous le QR code \u00e0 pr\u00e9senter \u00e0 votre arriv\u00e9e</p>
   </div>
   <div class="body">
@@ -115,7 +124,7 @@ body{min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;
 </html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Cache-Control', 'public, max-age=300');
     return res.status(200).send(html);
   } catch (e) {
     return res.status(500).send('Erreur serveur');
