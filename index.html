@@ -1536,13 +1536,12 @@ function renderPreviews(ev) {
   currentEmailTab = null; // Reset to prevent saving stale field values
   showEmailTab(emailTypes[0].id);
 
-  const checkinUrl = `${SUPABASE_URL}/functions/v1/checkin?code=PREVIEW123`;
-  const accessInfo = vis ? `Lien: ${ev.zoom_join_url||'https://zoom.us/...'}` : `QR code: ${checkinUrl}`;
-  const stopInfo = ev.sms_stop ? 'STOP SMS au 36180' : '';
+  const accessLabel = vis ? 'lien Zoom' : 'lien QR code';
+  const stopInfo = ev.sms_stop ? ' + mention STOP' : '';
   document.getElementById('sms-preview-list').innerHTML = smsTypes.map(t => {
     const dflt = pvSmsBody(ev, t.id);
     const display = cs[t.id] || dflt;
-    return `<div class="bg-gray-50 rounded-xl p-4"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-700">${t.lb}</span><span class="text-xs text-gray-400">de ${esc(ev.sms_sender||'DIPLOMA')}</span><span class="text-xs px-2 py-0.5 rounded ${ev.sms_push_type===0?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}">${ev.sms_push_type===0?'Marketing':'Notif'}</span></div><textarea id="sms-${t.id}" rows="3" class="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">${esc(display)}</textarea><p class="text-xs text-gray-400 mt-1 italic">+ auto : ${esc(accessInfo)}${stopInfo ? ' | '+stopInfo : ''}</p></div>`;
+    return `<div class="bg-gray-50 rounded-xl p-4"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-700">${t.lb}</span><span class="text-xs text-gray-400">de ${esc(ev.sms_sender||'DIPLOMA')}</span><span class="text-xs px-2 py-0.5 rounded ${ev.sms_push_type===0?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}">${ev.sms_push_type===0?'Marketing':'Notif'}</span></div><textarea id="sms-${t.id}" rows="3" class="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">${esc(display)}</textarea><p class="text-xs text-gray-400 mt-1 italic">\u2139\ufe0f Le ${accessLabel} personnel de chaque inscrit sera ajout\u00e9 automatiquement${stopInfo}</p></div>`;
   }).join('');
 }
 
