@@ -427,6 +427,14 @@
 
         <!-- Actions -->
         <div class="flex flex-wrap gap-3 mb-6">
+          <button id="btn-publish" onclick="publishEvent()" class="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-5 rounded-xl transition flex items-center gap-2 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Publier l'evenement
+          </button>
+          <button id="btn-unpublish" onclick="unpublishEvent()" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-5 rounded-xl transition flex items-center gap-2 hidden">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Mettre en brouillon
+          </button>
           <button onclick="openScanner()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
             Scanner les QR codes
@@ -1116,6 +1124,21 @@ async function loadEventDetail(id) {
   const statusEl = document.getElementById('detail-status');
   statusEl.innerHTML = `<span class="text-xs px-3 py-1 rounded-full ${statusClass(event.status)}">${statusLabel(event.status)}</span>`;
 
+  // Show/hide publish button based on status
+  const btnPublish = document.getElementById('btn-publish');
+  const btnUnpublish = document.getElementById('btn-unpublish');
+  if (event.status === 'published') {
+    btnPublish.classList.add('hidden');
+    btnUnpublish.classList.remove('hidden');
+  } else if (event.status === 'draft') {
+    btnPublish.classList.remove('hidden');
+    btnUnpublish.classList.add('hidden');
+  } else {
+    // completed or cancelled - hide both
+    btnPublish.classList.add('hidden');
+    btnUnpublish.classList.add('hidden');
+  }
+
   // Load forms
   const { data: forms } = await db.from('event_forms').select('*').eq('event_id', id);
   const formsContainer = document.getElementById('detail-forms');
@@ -1177,6 +1200,72 @@ async function deleteEvent() {
   }
   showToast('Evenement supprime');
   navigate('events');
+}
+
+async function publishEvent() {
+  if (!currentEventId || !previewEvent) return;
+  const btn = document.getElementById('btn-publish');
+  btn.disabled = true; btn.textContent = 'Publication...';
+  try {
+    // Update status in DB
+    const { error } = await db.from('events').update({ status: 'published' }).eq('id', currentEventId);
+    if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+
+    // Activate HubSpot workflow if exists
+    const wfId = previewEvent.hubspot_workflow_id;
+    if (wfId) {
+      btn.textContent = 'Activation workflow HubSpot...';
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/activate-workflow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workflow_id: wfId, enable: true })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Evenement publie + workflow HubSpot active !');
+        } else {
+          showToast('Evenement publie mais workflow non active: ' + (data.error || ''), 'warning');
+        }
+      } catch (e) {
+        console.error('Workflow activation error:', e);
+        showToast('Evenement publie mais erreur activation workflow', 'warning');
+      }
+    } else {
+      showToast('Evenement publie !');
+    }
+    loadEventDetail(currentEventId);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Publier l\'evenement';
+  }
+}
+
+async function unpublishEvent() {
+  if (!currentEventId || !previewEvent) return;
+  const btn = document.getElementById('btn-unpublish');
+  btn.disabled = true; btn.textContent = 'Desactivation...';
+  try {
+    const { error } = await db.from('events').update({ status: 'draft' }).eq('id', currentEventId);
+    if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+
+    // Deactivate HubSpot workflow
+    const wfId = previewEvent.hubspot_workflow_id;
+    if (wfId) {
+      try {
+        await fetch(SUPABASE_URL + '/functions/v1/activate-workflow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workflow_id: wfId, enable: false })
+        });
+      } catch (e) { console.error('Workflow deactivation error:', e); }
+    }
+    showToast('Evenement repasse en brouillon');
+    loadEventDetail(currentEventId);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Mettre en brouillon';
+  }
 }
 
 async function deleteEventById(id, name) {
