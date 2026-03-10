@@ -993,7 +993,13 @@ async function saveEvent() {
     return;
   }
 
-  const eventDate = `${evtDate}T${evtTimeStart}`;
+  // Add timezone offset so 14:00 Paris = 14:00 stored (not interpreted as UTC)
+  const tmpDate = new Date(`${evtDate}T${evtTimeStart}`);
+  const offset = -tmpDate.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const oh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+  const om = String(Math.abs(offset) % 60).padStart(2, '0');
+  const eventDate = `${evtDate}T${evtTimeStart}:00${sign}${oh}:${om}`;
 
   const saveBtn = document.querySelector('#page-event-new button[onclick="saveEvent()"]');
   const origText = saveBtn.textContent;
