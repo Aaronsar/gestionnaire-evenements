@@ -26,7 +26,8 @@ export default async function handler(req, res) {
     const timeStr = timeEnd ? `${timeStart} - ${timeEnd}` : timeStart;
     const lieu = isVisio ? 'En ligne (visioconf\u00e9rence)' : (ev.location || '\u00c0 confirmer');
     const qrImageUrl = `${SUPABASE_URL}/functions/v1/qr-image?code=${code}`;
-    const fullName = `${reg.first_name || ''} ${reg.last_name || ''}`.trim() || 'Participant';
+    const titleCase = (s) => s ? s.toLowerCase().replace(/(?:^|\s|-)\S/g, c => c.toUpperCase()) : '';
+    const fullName = `${titleCase(reg.first_name || '')} ${titleCase(reg.last_name || '')}`.trim() || 'Participant';
 
     // Build "à la Journée" / "au Gala" / "à l'Événement"
     const art = ev.article || 'la';
