@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/q/:code",
+      "destination": "/api/qr/:code"
+    }
+  ]
+}
