@@ -7,6 +7,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    // Immediately detect ?qr= param and inject CSS to hide login BEFORE rendering
+    if (new URLSearchParams(window.location.search).get('qr')) {
+      document.write('<style>#page-login{display:none!important}#page-qr{display:block!important}</style>');
+    }
+  </script>
   <style>
     [x-cloak] { display: none !important; }
     .page { display: none; }
@@ -719,8 +725,8 @@ function handleRoute() {
 
   // QR page is public (no auth required)
   if (page === 'qr' && id) {
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-layout').style.display = 'none';
+    document.getElementById('page-login').classList.remove('active');
     document.getElementById('page-qr').style.display = 'block';
     loadQrPage(id);
     return;
@@ -1824,8 +1830,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const qrCode = urlParams.get('qr');
   if (qrCode) {
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-layout').style.display = 'none';
+    document.getElementById('page-login').classList.remove('active');
     document.getElementById('page-qr').style.display = 'block';
     loadQrPage(qrCode);
     return;
