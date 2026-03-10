@@ -227,11 +227,32 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-2">Nom de l'evenement *</label>
-              <input type="text" id="evt-name" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: Conference Tech 2026">
+              <div class="flex gap-3">
+                <select id="evt-article" class="px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white text-sm font-medium" style="width:90px;">
+                  <option value="le">le</option>
+                  <option value="la">la</option>
+                  <option value="l'">l'</option>
+                  <option value="les">les</option>
+                </select>
+                <input type="text" id="evt-name" class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: Forum des etudes de medecine 2026">
+              </div>
+              <p class="text-xs text-gray-400 mt-1">L'article sera utilise dans les communications : "pour <strong>le</strong> Forum...", "pour <strong>la</strong> Journee..."</p>
             </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea id="evt-description" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Description de l'evenement..."></textarea>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Brief pour les communications</label>
+              <div class="relative">
+                <textarea id="evt-brief" rows="4" class="w-full px-4 py-3 pr-14 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Decrivez le contenu de l'evenement, les points cles, ce qui motive les participants... Utilisez le micro pour dicter votre brief !"></textarea>
+                <button type="button" onclick="toggleVoiceRecording()" id="voice-btn" class="absolute right-3 top-3 w-10 h-10 rounded-full bg-gray-100 hover:bg-red-100 flex items-center justify-center transition group" title="Dicter le brief">
+                  <svg id="voice-icon-mic" class="w-5 h-5 text-gray-500 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-14 0m14 0a7 7 0 00-14 0m14 0v1a7 7 0 01-14 0v-1m7 8v4m-4 0h8M12 1a3 3 0 00-3 3v7a3 3 0 006 0V4a3 3 0 00-3-3z"/></svg>
+                  <svg id="voice-icon-stop" class="w-5 h-5 text-red-500 hidden" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                </button>
+              </div>
+              <div id="voice-status" class="text-xs text-gray-400 mt-1">Cliquez sur le micro pour dicter votre brief vocalement</div>
+              <p class="text-xs text-gray-400 mt-1">Ce brief sera utilise pour personnaliser les emails et SMS envoyes aux inscrits (ton, contenu, motivation...).</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Date *</label>
@@ -378,6 +399,10 @@
           </div>
           <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100" id="detail-badges">
           </div>
+          <div id="detail-brief-section" class="hidden mt-4 pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Brief communications</p>
+            <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line" id="detail-brief">-</p>
+          </div>
         </div>
 
         <!-- Stats Cards -->
@@ -426,26 +451,51 @@
             <svg id="preview-chevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </div>
           <div id="preview-content" class="hidden mt-4">
-            <p class="text-sm text-gray-500 mb-4">Apercu des emails et SMS envoyes aux inscrits (donnees fictives : Jean Dupont).</p>
-            <!-- Email tabs -->
-            <div class="mb-6">
-              <div class="flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                <h4 class="text-sm font-semibold text-gray-700">Emails</h4>
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5">
+              <p class="text-sm text-amber-800 font-medium mb-1">Personnalisez vos communications avant publication</p>
+              <p class="text-xs text-amber-700">Modifiez les textes des emails et SMS ci-dessous, puis cliquez sur <strong>Sauvegarder</strong>. Utilisez <code class="bg-amber-100 px-1 py-0.5 rounded font-mono">{prenom}</code> pour inserer le prenom de l'inscrit. Donnees fictives : Jean Dupont.</p>
+            </div>
+
+            <!-- === EMAILS === -->
+            <div class="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-200">
+              <div class="flex items-center flex-wrap gap-2 mb-4">
+                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <h4 class="text-base font-bold text-gray-900">Emails</h4>
+                <span class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 font-medium">Exp : admissions@diploma-sante.fr</span>
               </div>
               <div id="email-tabs" class="flex flex-wrap gap-2 mb-4"></div>
-              <div class="border border-gray-200 rounded-xl overflow-hidden" style="height:600px;">
+              <div class="bg-white rounded-xl p-4 border border-gray-200 mb-4">
+                <div class="grid grid-cols-1 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Objet du mail</label>
+                    <input type="text" id="email-subject" class="w-full border-2 border-gray-300 rounded-lg px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500" onchange="onEmailFieldChange()" oninput="onEmailFieldChange()" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Texte d'accroche (corps du mail)</label>
+                    <textarea id="email-body" rows="3" class="w-full border-2 border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500" oninput="debounceRefresh(); onEmailFieldChange()" onchange="onEmailFieldChange()"></textarea>
+                  </div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 mb-2 italic">Apercu en temps reel :</p>
+              <div class="border-2 border-gray-300 rounded-xl overflow-hidden" style="height:600px;">
                 <iframe id="email-iframe" class="w-full h-full border-0"></iframe>
               </div>
             </div>
-            <!-- SMS list -->
-            <div>
-              <div class="flex items-center gap-2 mb-2">
-                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                <h4 class="text-sm font-semibold text-gray-700">SMS</h4>
+
+            <!-- === SMS === -->
+            <div class="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-200">
+              <div class="flex items-center gap-2 mb-4">
+                <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <h4 class="text-base font-bold text-gray-900">SMS</h4>
+                <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Modifiables</span>
               </div>
               <div id="sms-preview-list" class="space-y-3"></div>
             </div>
+
+            <button onclick="saveCustomComms()" class="w-full py-4 bg-primary-600 text-white rounded-xl font-bold text-base hover:bg-primary-700 transition flex items-center justify-center gap-2 shadow-lg">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Sauvegarder les communications
+            </button>
           </div>
         </div>
 
@@ -740,18 +790,21 @@ async function loadEvents() {
   }
 
   container.innerHTML = events.map(e => `
-    <a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="font-semibold text-gray-900">${esc(e.name)}</p>
-          <p class="text-sm text-gray-500">${formatEventSummary(e)}</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-        </div>
+    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition flex items-center justify-between">
+      <a href="#event/${e.id}" class="flex-1 min-w-0">
+        <p class="font-semibold text-gray-900">${esc(e.name)}</p>
+        <p class="text-sm text-gray-500 truncate">${formatEventSummary(e)}</p>
+      </a>
+      <div class="flex items-center gap-2 ml-3 flex-shrink-0">
+        <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
+        <button onclick="event.stopPropagation(); deleteEventById('${e.id}', '${esc(e.name).replace(/'/g,"\\'")}')" class="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition" title="Supprimer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+        <a href="#event/${e.id}" class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </a>
       </div>
-    </a>
+    </div>
   `).join('');
 }
 
@@ -773,6 +826,53 @@ function toggleSmsConfig() {
   const checked = document.getElementById('evt-sms-factor').checked;
   document.getElementById('sms-config').classList.toggle('hidden', !checked);
 }
+
+// Voice recording via Web Speech API
+let voiceRecognition = null;
+let voiceActive = false;
+
+function toggleVoiceRecording() {
+  if (voiceActive) { stopVoiceRecording(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('La reconnaissance vocale n\'est pas supportee par ce navigateur. Utilisez Chrome.', 'error'); return; }
+  voiceRecognition = new SR();
+  voiceRecognition.lang = 'fr-FR';
+  voiceRecognition.continuous = true;
+  voiceRecognition.interimResults = true;
+  let finalText = document.getElementById('evt-brief').value;
+  if (finalText && !finalText.endsWith(' ')) finalText += ' ';
+  voiceRecognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) { finalText += e.results[i][0].transcript + ' '; }
+      else { interim += e.results[i][0].transcript; }
+    }
+    document.getElementById('evt-brief').value = finalText + interim;
+  };
+  voiceRecognition.onerror = (e) => { console.error('Voice error:', e); stopVoiceRecording(); showToast('Erreur micro: ' + e.error, 'error'); };
+  voiceRecognition.onend = () => { if (voiceActive) voiceRecognition.start(); };
+  voiceRecognition.start();
+  voiceActive = true;
+  document.getElementById('voice-icon-mic').classList.add('hidden');
+  document.getElementById('voice-icon-stop').classList.remove('hidden');
+  document.getElementById('voice-btn').classList.add('bg-red-100', 'animate-pulse');
+  document.getElementById('voice-btn').classList.remove('bg-gray-100');
+  document.getElementById('voice-status').textContent = 'Enregistrement en cours... Parlez !';
+  document.getElementById('voice-status').classList.add('text-red-500');
+  document.getElementById('voice-status').classList.remove('text-gray-400');
+}
+
+function stopVoiceRecording() {
+  voiceActive = false;
+  if (voiceRecognition) { try { voiceRecognition.stop(); } catch(e) {} voiceRecognition = null; }
+  document.getElementById('voice-icon-mic').classList.remove('hidden');
+  document.getElementById('voice-icon-stop').classList.add('hidden');
+  document.getElementById('voice-btn').classList.remove('bg-red-100', 'animate-pulse');
+  document.getElementById('voice-btn').classList.add('bg-gray-100');
+  document.getElementById('voice-status').textContent = 'Enregistrement termine. Vous pouvez editer le texte ci-dessus.';
+  document.getElementById('voice-status').classList.remove('text-red-500');
+  document.getElementById('voice-status').classList.add('text-gray-400');
+}
 function toggleSmsStop() {
   const isMarketing = document.getElementById('evt-sms-push-type').value === '0';
   document.getElementById('sms-stop-container').classList.toggle('hidden', !isMarketing);
@@ -783,6 +883,8 @@ let hubspotFormsCache = [];
 function resetEventForm() {
   document.getElementById('evt-name').value = '';
   document.getElementById('evt-description').value = '';
+  document.getElementById('evt-brief').value = '';
+  stopVoiceRecording();
   document.getElementById('evt-date').value = '';
   document.getElementById('evt-location').value = '';
   document.getElementById('evt-visio-link').value = '';
@@ -851,7 +953,9 @@ function updateSelectedCount() {
 
 async function saveEvent() {
   const name = document.getElementById('evt-name').value.trim();
+  const article = document.getElementById('evt-article').value;
   const description = document.getElementById('evt-description').value.trim();
+  const brief = document.getElementById('evt-brief').value.trim();
   const evtDate = document.getElementById('evt-date').value;
   const evtTimeStart = document.getElementById('evt-time-start').value;
   const evtTimeEnd = document.getElementById('evt-time-end').value;
@@ -894,7 +998,9 @@ async function saveEvent() {
     // Insert event
     const { data: event, error } = await db.from('events').insert({
       name,
+      article,
       description: description || null,
+      brief: brief || null,
       event_date: eventDate,
       event_time_end: isVisio ? null : evtTimeEnd,
       location: locationLabel,
@@ -993,6 +1099,15 @@ async function loadEventDetail(id) {
   if (!badges) badges = '<span class="text-xs text-gray-400">Aucune integration configuree</span>';
   badgesEl.innerHTML = badges;
 
+  // Brief
+  const briefSection = document.getElementById('detail-brief-section');
+  if (event.brief) {
+    briefSection.classList.remove('hidden');
+    document.getElementById('detail-brief').textContent = event.brief;
+  } else {
+    briefSection.classList.add('hidden');
+  }
+
   // Setup preview
   previewEvent = event;
   document.getElementById('preview-content').classList.add('hidden');
@@ -1062,6 +1177,14 @@ async function deleteEvent() {
   }
   showToast('Evenement supprime');
   navigate('events');
+}
+
+async function deleteEventById(id, name) {
+  if (!confirm(`Supprimer l'evenement "${name}" et toutes ses inscriptions ?`)) return;
+  const { error } = await db.from('events').delete().eq('id', id);
+  if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+  showToast('Evenement supprime');
+  loadEvents();
 }
 
 function exportCSV() {
@@ -1261,6 +1384,42 @@ function togglePreview() {
   if (show && previewEvent) renderPreviews(previewEvent);
 }
 
+let currentEmailTab = 'confirmation';
+let emailTabValues = {};
+let _refreshTimer;
+
+function ucfirst(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function evNom(ev, maj) {
+  const a = ev.article || 'le';
+  const sep = a === "l'" ? '' : ' ';
+  const art = maj ? ucfirst(a) : a;
+  return art + sep + ev.name;
+}
+function evPour(ev) { return 'pour ' + evNom(ev); }
+function evDe(ev) {
+  const a = ev.article || 'le';
+  if (a === "l'") return "de l'" + ev.name;
+  if (a === 'le') return 'du ' + ev.name;
+  if (a === 'les') return 'des ' + ev.name;
+  return 'de la ' + ev.name;
+}
+
+function pvEmailSubject(ev, type) {
+  const n = evNom(ev); const N = evNom(ev, true);
+  return ({'confirmation':`Inscription confirm\u00e9e \u2014 ${ev.name}`,'j-5':`J-5 \u2014 ${N} approche !`,'j-3':`J-3 \u2014 Pr\u00e9parez-vous ${evPour(ev)}`,'j-2':`Apr\u00e8s-demain, c'est ${n} !`,'j-1':`C'est DEMAIN \u2014 ${ev.name}`,'j-0-matin':`C'est AUJOURD'HUI \u2014 ${ev.name} !`})[type] || `Rappel \u2014 ${ev.name}`;
+}
+function pvEmailBody(ev, type) {
+  const vis = !!ev.zoom_join_url; const n = evNom(ev); const N = evNom(ev, true); const p = evPour(ev);
+  return ({'confirmation':`Merci pour votre inscription ! Nous avons h\u00e2te de vous accueillir. ${vis?'Le lien de connexion':'Votre QR code personnel'} se trouve ci-dessous.`,'j-5':`Bonjour {prenom}, ${N} approche \u00e0 grands pas et nous sommes impatients de vous y accueillir !`,'j-3':`Bonjour {prenom}, ${N} est dans 3 jours et nous avons h\u00e2te de partager ce moment avec vous !`,'j-2':`Bonjour {prenom}, c'est apr\u00e8s-demain et nous avons vraiment h\u00e2te de vous retrouver ${p} !`,'j-1':`Bonjour {prenom}, c'est demain ! Toute l'\u00e9quipe Diploma Sant\u00e9 a h\u00e2te de vous accueillir ${p}.`,'j-0-matin':`C'est le jour J ! Nous sommes ravis de vous retrouver ${p}.`})[type] || `Rappel ${p}. Nous avons h\u00e2te de vous y voir !`;
+}
+function pvSmsBody(ev, type) {
+  const d = new Date(ev.event_date); const ds = d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  const ti = pvTRP(ev); const vis = !!ev.zoom_join_url;
+  const loc = !vis && ev.location ? ' - '+ev.location : '';
+  const n = evNom(ev); const p = evPour(ev);
+  return ({'confirmation':`{prenom}, super nouvelle ! Votre inscription ${p} est confirmee ! On a hate de vous retrouver le ${ds} ${ti}${loc}. Ca va etre un moment enrichissant !`,'j-5':`{prenom}, plus que 5 jours avant ${n} ! On a vraiment hate de vous retrouver le ${ds} ${ti}. Ca va etre un super moment !`,'j-3':`{prenom}, J-3 avant ${n} ! Le compte a rebours est lance et on a hate d'y etre ! RDV le ${ds} ${ti}${loc}.`,'j-2':`{prenom}, apres-demain c'est ${n} ! On est impatients de vous accueillir le ${ds} ${ti}${loc}.`,'j-1':`{prenom}, c'est DEMAIN ! On se retrouve ${p} ${ti}${loc}. Toute l'equipe vous attend avec impatience !`,'j-0-matin':`{prenom}, c'est AUJOURD'HUI ! On est ravis de vous retrouver ${p} ${ti}${loc}. A tout de suite !`,'j-0-11h':`{prenom}, ${n} ${vis?'est en cours':"c'est cet apres-midi"} ${ti}. On vous attend !${vis?' Connectez-vous vite !':' Rejoignez-nous !'}`,'j-0-14h':`{prenom}, ${n} ${ti}. ${vis?'Connectez-vous, on vous attend !':'On vous attend sur place, a tout de suite !'}`,'j-0-5min':`{prenom}, ${n} commence dans 5 minutes ! On est prets, et vous ? A tout de suite !`})[type] || `Rappel: ${n} le ${ds}. On a hate de vous retrouver !`;
+}
+
 function renderPreviews(ev) {
   const vis = !!ev.zoom_join_url;
   const emailTypes = vis
@@ -1269,42 +1428,80 @@ function renderPreviews(ev) {
   const smsTypes = vis
     ? [{id:'confirmation',lb:'Confirmation'},{id:'j-1',lb:'J-1 (veille)'},{id:'j-0-matin',lb:'J-0 matin'},{id:'j-0-11h',lb:'J-0 11h'},{id:'j-0-14h',lb:'J-0 14h'},{id:'j-0-5min',lb:'5 min avant'}]
     : [{id:'confirmation',lb:'Confirmation'},{id:'j-5',lb:'J-5'},{id:'j-3',lb:'J-3'},{id:'j-2',lb:'J-2'},{id:'j-1',lb:'J-1'},{id:'j-0-matin',lb:'J-0 matin'}];
+  window._emailTypes = emailTypes; window._smsTypes = smsTypes;
+
+  emailTabValues = {};
+  const ce = ev.custom_emails || {};
+  Object.keys(ce).forEach(t => { if(ce[t]) emailTabValues[t] = {subject:ce[t].subject||'', body:ce[t].body||''}; });
+  const cs = ev.custom_sms || {};
 
   document.getElementById('email-tabs').innerHTML = emailTypes.map((t,i) =>
     `<button onclick="showEmailTab('${t.id}')" class="email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${i===0?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-tab="${t.id}">${t.lb}</button>`
   ).join('');
+  currentEmailTab = emailTypes[0].id;
   showEmailTab(emailTypes[0].id);
 
   const checkinUrl = `${SUPABASE_URL}/functions/v1/checkin?code=PREVIEW123`;
-  const stopTxt = ev.sms_stop ? '\nSTOP SMS au 36180' : '';
+  const accessInfo = vis ? `Lien: ${ev.zoom_join_url||'https://zoom.us/...'}` : `QR code: ${checkinUrl}`;
+  const stopInfo = ev.sms_stop ? 'STOP SMS au 36180' : '';
   document.getElementById('sms-preview-list').innerHTML = smsTypes.map(t => {
-    const txt = pvSms(ev, t.id, checkinUrl) + stopTxt;
-    return `<div class="bg-gray-50 rounded-xl p-4"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-700">${t.lb}</span><span class="text-xs text-gray-400">de ${esc(ev.sms_sender||'DIPLOMA')}</span><span class="text-xs px-2 py-0.5 rounded ${ev.sms_push_type===0?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}">${ev.sms_push_type===0?'Marketing':'Notif'}</span></div><p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">${esc(txt)}</p></div>`;
+    const dflt = pvSmsBody(ev, t.id);
+    const display = cs[t.id] || dflt;
+    return `<div class="bg-gray-50 rounded-xl p-4"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-700">${t.lb}</span><span class="text-xs text-gray-400">de ${esc(ev.sms_sender||'DIPLOMA')}</span><span class="text-xs px-2 py-0.5 rounded ${ev.sms_push_type===0?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}">${ev.sms_push_type===0?'Marketing':'Notif'}</span></div><textarea id="sms-${t.id}" rows="3" class="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">${esc(display)}</textarea><p class="text-xs text-gray-400 mt-1 italic">+ auto : ${esc(accessInfo)}${stopInfo ? ' | '+stopInfo : ''}</p></div>`;
   }).join('');
 }
 
 function showEmailTab(type) {
+  if (currentEmailTab) {
+    const s = document.getElementById('email-subject'), b = document.getElementById('email-body');
+    if (s && b) emailTabValues[currentEmailTab] = {subject:s.value, body:b.value};
+  }
+  currentEmailTab = type;
   document.querySelectorAll('.email-tab').forEach(t => {
     t.className = `email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${t.dataset.tab===type?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`;
   });
-  const html = type === 'confirmation' ? pvConfEmail(previewEvent) : pvEmail(previewEvent, type);
+  const ev = previewEvent, tv = emailTabValues[type];
+  const s = document.getElementById('email-subject'), b = document.getElementById('email-body');
+  if (s) s.value = tv?.subject || pvEmailSubject(ev, type);
+  if (b) b.value = tv?.body || pvEmailBody(ev, type);
+  refreshEmailPreview();
+}
+function debounceRefresh() { clearTimeout(_refreshTimer); _refreshTimer = setTimeout(refreshEmailPreview, 400); }
+function onEmailFieldChange() {
+  if (!currentEmailTab) return;
+  emailTabValues[currentEmailTab] = {subject:document.getElementById('email-subject')?.value||'', body:document.getElementById('email-body')?.value||''};
+}
+function refreshEmailPreview() {
+  const type = currentEmailTab, body = document.getElementById('email-body')?.value||'';
+  const html = type === 'confirmation' ? pvConfEmail(previewEvent, body) : pvEmail(previewEvent, type, body);
   const iframe = document.getElementById('email-iframe');
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
 }
 
-// ---- Preview template helpers ----
-function pvTR(ev) {
-  const d = new Date(ev.event_date);
-  const s = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  return ev.event_time_end ? `de ${s} \u00e0 ${ev.event_time_end}` : `\u00e0 ${s}`;
-}
-function pvTRP(ev) {
-  const d = new Date(ev.event_date);
-  const s = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  return ev.event_time_end ? `de ${s} a ${ev.event_time_end}` : `a ${s}`;
+async function saveCustomComms() {
+  if (!currentEventId) return;
+  const s = document.getElementById('email-subject'), b = document.getElementById('email-body');
+  if (currentEmailTab && s && b) emailTabValues[currentEmailTab] = {subject:s.value, body:b.value};
+  const customSms = {};
+  (window._smsTypes||[]).forEach(t => { const el = document.getElementById(`sms-${t.id}`); if(el&&el.value.trim()) customSms[t.id] = el.value.trim(); });
+  const customEmails = {};
+  (window._emailTypes||[]).forEach(t => { const v = emailTabValues[t.id]; if(v&&(v.subject||v.body)) customEmails[t.id] = {subject:v.subject||'', body:v.body||''}; });
+  const { error } = await db.from('events').update({custom_sms:customSms, custom_emails:customEmails}).eq('id', currentEventId);
+  if (error) { showToast('Erreur: '+error.message,'error'); return; }
+  previewEvent.custom_sms = customSms; previewEvent.custom_emails = customEmails;
+  showToast('Communications sauvegard\u00e9es !');
 }
 
+// ---- Preview template helpers ----
+function pvTR(ev) {
+  const d = new Date(ev.event_date), s = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  return ev.event_time_end ? `De ${s} \u00e0 ${ev.event_time_end}` : `\u00c0 ${s}`;
+}
+function pvTRP(ev) {
+  const d = new Date(ev.event_date), s = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  return ev.event_time_end ? `de ${s} a ${ev.event_time_end}` : `a ${s}`;
+}
 function pvVisioBtn(url) {
   return `<div style="background:linear-gradient(135deg,#2D8CFF,#1A6FD1);border-radius:12px;padding:24px;margin:28px 0;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.8);margin:0 0 12px;font-weight:700;">Rejoindre la visioconf\u00e9rence</p><a href="${url}" style="display:inline-block;background:#FFF;color:#2D8CFF!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Rejoindre \u2192</a><p style="font-size:12px;color:rgba(255,255,255,0.6);margin:12px 0 0;word-break:break-all;">${url}</p></div>`;
 }
@@ -1315,60 +1512,45 @@ function pvQrBlk() {
 function pvAccess(ev) { return ev.zoom_join_url ? pvVisioBtn(ev.zoom_join_url) : pvQrBlk(); }
 
 function pvWrap(heroT, heroS, body, access) {
-  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F2EC;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;"><img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" width="260" style="display:block;margin:0 auto;width:260px;"></div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:#1C2436;padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;line-height:1.2;color:#FFF;margin:0 0 16px;">${heroT}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroS}</p><div style="width:48px;height:2px;background:linear-gradient(90deg,#C2AB82,transparent);margin:28px auto 0;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}${access}</div></td></tr><tr><td><div style="background:#1C2436;padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#FFF;margin:0 0 12px;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">En cas de question, contactez-nous.</p><a href="mailto:contact@diploma-sante.fr" style="display:inline-block;background:#C2AB82;color:#1C2436!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Diploma Sant\u00e9</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} Diploma Sant\u00e9</p></td></tr></table></body></html>`;
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F2EC;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;"><img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" width="260" style="display:block;margin:0 auto;width:260px;"></div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:#1C2436;padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;line-height:1.2;color:#FFF;margin:0 0 16px;">${heroT}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroS}</p><div style="width:48px;height:2px;background:linear-gradient(90deg,#C2AB82,transparent);margin:28px auto 0;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}${access}</div></td></tr><tr><td><div style="background:#1C2436;padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#FFF;margin:0 0 12px;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">Nous avons h\u00e2te de vous retrouver. N'h\u00e9sitez pas \u00e0 nous contacter !</p><a href="mailto:admissions@diploma-sante.fr" style="display:inline-block;background:#C2AB82;color:#1C2436!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Diploma Sant\u00e9</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} Diploma Sant\u00e9</p></td></tr></table></body></html>`;
 }
-
+function pvBrief(ev) {
+  if (!ev.brief) return '';
+  return `<div style="background:linear-gradient(135deg,#F5F2EC,#EDE8DF);border-radius:12px;padding:24px;margin:24px 0;border-left:4px solid #C2AB82;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#C2AB82;margin:0 0 12px;font-weight:700;">Ce qui vous attend</p><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;">${esc(ev.brief)}</p></div>`;
+}
 function pvDetailTbl(ev) {
   const d = new Date(ev.event_date);
-  const ds = d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const ds = ucfirst(d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
   const vis = !!ev.zoom_join_url; const loc = vis ? 'Visioconf\u00e9rence' : (ev.location||'\u00c0 confirmer');
   return `<h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#1C2436;margin:0 0 20px;padding-bottom:14px;border-bottom:1.5px solid #EAE8E3;">D\u00e9tails</h2><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;"><tr><td style="padding:8px 16px 8px 0;vertical-align:top;width:50%;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#C2AB82;margin:0 0 4px;font-weight:700;">\u00c9v\u00e9nement</p><p style="font-size:16px;color:#1C2436;margin:0;font-weight:700;">${ev.name}</p></td><td style="padding:8px 0 8px 16px;vertical-align:top;width:50%;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#C2AB82;margin:0 0 4px;font-weight:700;">Date</p><p style="font-size:16px;color:#1C2436;margin:0;font-weight:700;">${ds}<br>${pvTR(ev)}</p></td></tr><tr><td style="padding:8px 16px 8px 0;vertical-align:top;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#C2AB82;margin:0 0 4px;font-weight:700;">Lieu</p><p style="font-size:16px;color:#1C2436;margin:0;font-weight:700;">${loc}</p></td><td style="padding:8px 0 8px 16px;vertical-align:top;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#C2AB82;margin:0 0 4px;font-weight:700;">Participant</p><p style="font-size:16px;color:#1C2436;margin:0;font-weight:700;">Jean Dupont</p></td></tr></table>`;
 }
 
-function pvConfEmail(ev) {
-  const d = new Date(ev.event_date);
-  const ds = d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  const vis = !!ev.zoom_join_url; const loc = vis ? 'Visioconf\u00e9rence' : (ev.location||'\u00c0 confirmer');
-  const access = pvAccess(ev);
+function pvConfEmail(ev, customBody) {
+  const vis = !!ev.zoom_join_url; const access = pvAccess(ev);
   const tip = vis ? 'Gardez le <strong style="color:#1C2436;">lien de connexion</strong> ci-dessus \u00e0 port\u00e9e de main pour le jour J.' : 'Astuce : faites une <strong style="color:#1C2436;">capture d\'\u00e9cran</strong> du QR code pour y acc\u00e9der facilement.';
-  return pvWrap(
-    '<em style="font-style:italic;color:#C2AB82;">Votre inscription</em><br>est confirm\u00e9e !',
-    `Merci pour votre inscription. ${vis?'Le lien de connexion':'Votre QR code personnel'} se trouve ci-dessous.`,
-    `${pvDetailTbl(ev)}${access}<div style="background:#F5F2EC;border-left:4px solid #C2AB82;border-radius:0 12px 12px 0;padding:20px 24px;"><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;font-style:italic;">${tip}</p></div>`,
-    ''
-  );
+  const heroSub = (customBody||'').trim() ? esc(customBody).replace(/\{prenom\}/g,'<strong style="color:#1C2436;">Jean</strong>') : `Merci pour votre inscription ! Nous avons h\u00e2te de vous accueillir. ${vis?'Le lien de connexion':'Votre QR code personnel'} se trouve ci-dessous.`;
+  return pvWrap('<em style="font-style:italic;color:#C2AB82;">Votre inscription</em><br>est confirm\u00e9e !', heroSub,
+    `${pvDetailTbl(ev)}${pvBrief(ev)}${access}<div style="background:#F5F2EC;border-left:4px solid #C2AB82;border-radius:0 12px 12px 0;padding:20px 24px;"><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;font-style:italic;">${tip}</p></div>`, '');
 }
 
-function pvEmail(ev, type) {
+function pvEmail(ev, type, customBody) {
   const d = new Date(ev.event_date);
-  const ds = d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const ds = ucfirst(d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
   const vis = !!ev.zoom_join_url; const loc = vis ? 'Visioconf\u00e9rence' : (ev.location||'\u00c0 confirmer');
-  const access = pvAccess(ev); const fn = 'Jean';
-  if (type === 'j-5') return pvWrap(`Plus que <em style="font-style:italic;color:#C2AB82;">5 jours</em><br>avant l'\u00e9v\u00e9nement !`, `${fn}, votre \u00e9v\u00e9nement approche \u00e0 grands pas.`, `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1C2436;">${fn}</strong>, nous sommes ravis de vous retrouver dans 5 jours pour <strong style="color:#1C2436;">${ev.name}</strong>.</p>${pvDetailTbl(ev)}`, access);
-  if (type === 'j-3') { const lI = vis ? 'En visioconf\u00e9rence. Le lien est ci-dessous.' : (ev.location||'Adresse \u00e0 confirmer'); return pvWrap(`<em style="font-style:italic;color:#C2AB82;">J-3</em> \u2014 Pr\u00e9parez-vous !`, `${fn}, plus que 3 jours !`, `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1C2436;">${fn}</strong>, <strong style="color:#1C2436;">${ev.name}</strong> est dans 3 jours.</p><h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#1C2436;margin:0 0 20px;padding-bottom:14px;border-bottom:1.5px solid #EAE8E3;">Infos pratiques</h2><p style="font-size:15px;color:#3D4B5C;margin:0 0 8px;"><strong style="color:#1C2436;">\ud83d\udcc5 Date :</strong> ${ds} ${pvTR(ev)}</p><p style="font-size:15px;color:#3D4B5C;margin:0 0 8px;"><strong style="color:#1C2436;">\ud83d\udccd ${vis?'Connexion':'Lieu'} :</strong> ${lI}</p><p style="font-size:15px;color:#3D4B5C;margin:0 0 24px;"><strong style="color:#1C2436;">\u23f0 Conseil :</strong> Soyez pr\u00eat(e) 15 minutes en avance.</p>`, access); }
-  if (type === 'j-2') return pvWrap(`<em style="font-style:italic;color:#C2AB82;">Apr\u00e8s-demain,</em><br>c'est le jour J !`, `${fn}, plus que 2 jours !`, `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1C2436;">${fn}</strong>, c'est <strong style="color:#1C2436;">apr\u00e8s-demain</strong> !</p><div style="background:linear-gradient(135deg,#1C2436,#2A3550);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#C2AB82;margin:0 0 8px;font-weight:700;">Rendez-vous</p><p style="font-size:18px;color:#FFF;margin:0 0 4px;font-weight:700;">${ds} ${pvTR(ev)}</p><p style="font-size:14px;color:rgba(255,255,255,0.6);margin:0;">${loc}</p></div>`, access);
-  if (type === 'j-1') { const sT = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); return pvWrap(`<em style="font-style:italic;color:#C2AB82;">C'est demain !</em><br>On vous attend`, `${fn}, dernier rappel !`, `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1C2436;">${fn}</strong>, c'est <strong style="color:#1C2436;">demain</strong> !</p><div style="background:linear-gradient(135deg,#C2AB82,#D4C49E);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#1C2436;margin:0 0 8px;font-weight:700;">Demain</p><p style="font-size:22px;color:#1C2436;margin:0 0 4px;font-weight:700;font-family:'DM Serif Display',Georgia,serif;">${sT}${!vis&&ev.location?' \u2014 '+ev.location:''}</p><p style="font-size:14px;color:rgba(28,36,54,0.7);margin:0;">${ev.name}</p></div>`, access); }
-  if (type === 'j-0-matin') return pvWrap(`C'est <em style="font-style:italic;color:#C2AB82;">aujourd'hui</em> !`, `${fn}, on se retrouve ${vis?'en ligne':'sur place'} !`, `<p style="font-size:18px;line-height:1.7;color:#1C2436;margin:0 0 24px;font-weight:700;">C'est le jour J ! ${ev.name} ${vis?'commence':'vous attend'} ${pvTR(ev)}.</p><div style="background:linear-gradient(135deg,#C2AB82,#D4C49E);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;"><p style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:#1C2436;margin:0 0 8px;font-weight:700;">Aujourd'hui</p><p style="font-size:22px;color:#1C2436;margin:0;font-weight:700;font-family:'DM Serif Display',Georgia,serif;">${pvTR(ev)}${!vis&&ev.location?' \u2014 '+ev.location:''}</p></div>`, access);
-  return pvWrap(`Rappel \u2014 ${ev.name}`, `${fn}, rappel.`, `<p style="font-size:16px;color:#3D4B5C;">Rappel pour ${ev.name} ${ds} ${pvTR(ev)}.</p>`, access);
-}
-
-function pvSms(ev, type, checkinUrl) {
-  const d = new Date(ev.event_date); const ds = d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
-  const ti = pvTRP(ev); const fn = 'Jean'; const vis = !!ev.zoom_join_url;
-  const acc = vis ? ` Lien: ${ev.zoom_join_url}` : ` QR code: ${checkinUrl}`;
-  const loc = !vis && ev.location ? ' - '+ev.location : '';
-  const m = {
-    'confirmation': `Bonjour ${fn}, inscription confirmee a ${ev.name} ! Le ${ds} ${ti}${loc}.${acc}`,
-    'j-5': `Bonjour ${fn}, ${ev.name} dans 5 jours (${ds} ${ti}).${acc}`,
-    'j-3': `${fn}, J-3 avant ${ev.name} ! ${ds} ${ti}${loc}.${acc}`,
-    'j-2': `${fn}, apres-demain c'est ${ev.name} ! ${ds} ${ti}.${acc}`,
-    'j-1': `${fn}, c'est DEMAIN ! ${ev.name} ${ti}${loc}.${acc}`,
-    'j-0-matin': `${fn}, c'est AUJOURD'HUI ! ${ev.name} ${ti}${loc}.${acc}`,
-    'j-0-11h': `${fn}, rappel: ${ev.name} est ${vis?'en cours':'cet apres-midi'} ${ti}.${acc}`,
-    'j-0-14h': `${fn}, ${ev.name} ${ti}. ${vis?'Connectez-vous maintenant !':'On vous attend !'}${acc}`,
-    'j-0-5min': `${fn}, ${ev.name} commence dans 5 minutes !${acc}`,
-  };
-  return m[type] || `Rappel: ${ev.name} ${ds}.${acc}`;
+  const access = pvAccess(ev); const fn = 'Jean'; const brief = pvBrief(ev);
+  const sT = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  function introP(text) { return `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">${esc(text).replace(/\{prenom\}/g,'<strong style="color:#1C2436;">'+fn+'</strong>')}</p>`; }
+  const body = (customBody||'').trim() ? customBody : pvEmailBody(ev, type);
+  const p = introP(body);
+  const heroes = {'j-5':[`Plus que <em style="font-style:italic;color:#C2AB82;">5 jours</em><br>avant ${evNom(ev)} !`,`Nous avons h\u00e2te de vous retrouver !`],'j-3':[`<em style="font-style:italic;color:#C2AB82;">J-3</em> \u2014 Pr\u00e9parez-vous !`,`Plus que 3 jours avant ${evNom(ev)} !`],'j-2':[`<em style="font-style:italic;color:#C2AB82;">Apr\u00e8s-demain,</em><br>c'est le jour J !`,`Le compte \u00e0 rebours est lanc\u00e9 !`],'j-1':[`<em style="font-style:italic;color:#C2AB82;">C'est demain !</em><br>On vous attend`,`Rendez-vous demain ${evPour(ev)} !`],'j-0-matin':[`C'est <em style="font-style:italic;color:#C2AB82;">aujourd'hui</em> !`,`Le grand jour est arriv\u00e9 !`]};
+  const [heroT, heroS] = heroes[type] || [`Rappel \u2014 ${ev.name}`,`Petit rappel !`];
+  let extra = '';
+  if (type==='j-3') { const lI = vis ? 'En visioconf\u00e9rence.' : (ev.location||'\u00c0 confirmer'); extra = `<h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#1C2436;margin:0 0 20px;padding-bottom:14px;border-bottom:1.5px solid #EAE8E3;">Infos pratiques</h2><p style="font-size:15px;color:#3D4B5C;margin:0 0 8px;"><strong style="color:#1C2436;">\ud83d\udcc5 Date :</strong> ${ds} ${pvTR(ev).toLowerCase()}</p><p style="font-size:15px;color:#3D4B5C;margin:0 0 8px;"><strong style="color:#1C2436;">\ud83d\udccd ${vis?'Connexion':'Lieu'} :</strong> ${lI}</p><p style="font-size:15px;color:#3D4B5C;margin:0 0 24px;"><strong style="color:#1C2436;">\u23f0 Conseil :</strong> Soyez pr\u00eat(e) 15 minutes en avance pour profiter pleinement de l'\u00e9v\u00e9nement.</p>`; }
+  if (type==='j-2') extra = `<div style="background:linear-gradient(135deg,#1C2436,#2A3550);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#C2AB82;margin:0 0 8px;font-weight:700;">Rendez-vous</p><p style="font-size:18px;color:#FFF;margin:0 0 4px;font-weight:700;">${ds} ${pvTR(ev)}</p><p style="font-size:14px;color:rgba(255,255,255,0.6);margin:0;">${loc}</p></div>`;
+  if (type==='j-1') extra = `<div style="background:linear-gradient(135deg,#C2AB82,#D4C49E);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#1C2436;margin:0 0 8px;font-weight:700;">Demain</p><p style="font-size:22px;color:#1C2436;margin:0 0 4px;font-weight:700;font-family:'DM Serif Display',Georgia,serif;">${sT}${!vis&&ev.location?' \u2014 '+ev.location:''}</p><p style="font-size:14px;color:rgba(28,36,54,0.7);margin:0;">${ev.name}</p></div>`;
+  if (type==='j-0-matin') extra = `<div style="background:linear-gradient(135deg,#C2AB82,#D4C49E);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;"><p style="font-size:14px;text-transform:uppercase;letter-spacing:1.5px;color:#1C2436;margin:0 0 8px;font-weight:700;">Aujourd'hui</p><p style="font-size:22px;color:#1C2436;margin:0;font-weight:700;font-family:'DM Serif Display',Georgia,serif;">${pvTR(ev)}${!vis&&ev.location?' \u2014 '+ev.location:''}</p></div>`;
+  const details = (type==='j-5') ? pvDetailTbl(ev) : '';
+  return pvWrap(heroT, heroS, `${p}${brief}${extra}${details}`, access);
 }
 
 // ============================================================
