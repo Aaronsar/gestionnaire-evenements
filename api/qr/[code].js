@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     const timeStart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     const timeEnd = ev.event_time_end || '';
     const timeStr = timeEnd ? `${timeStart} - ${timeEnd}` : timeStart;
-    const lieu = isVisio ? 'En ligne (visioconference)' : (ev.location || 'A confirmer');
+    const lieu = isVisio ? 'En ligne (visioconf\u00e9rence)' : (ev.location || '\u00c0 confirmer');
     const qrImageUrl = `${SUPABASE_URL}/functions/v1/qr-image?code=${code}`;
     const fullName = `${reg.first_name || ''} ${reg.last_name || ''}`.trim() || 'Participant';
 
@@ -39,8 +39,9 @@ export default async function handler(req, res) {
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;display:flex;flex-direction:column;align-items:center;padding:24px 16px}
 .card{background:#FFF;border-radius:20px;max-width:420px;width:100%;overflow:hidden;box-shadow:0 8px 32px rgba(28,36,54,0.12)}
+.logo-wrap{background:#FFFFFF;padding:28px 24px 20px;text-align:center}
+.logo{width:200px;display:block;margin:0 auto}
 .header{background:#1C2436;padding:32px 24px;text-align:center}
-.logo{width:180px;margin-bottom:20px}
 .check{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:rgba(194,171,130,0.2);border-radius:50%;margin-bottom:16px}
 .title{font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#FFF;line-height:1.3;margin:0 0 8px}
 .subtitle{font-size:14px;color:rgba(255,255,255,0.65);line-height:1.5}
@@ -67,20 +68,22 @@ body{min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;
 </head>
 <body>
 <div class="card">
+  <div class="logo-wrap">
+    <img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma Sant\u00e9" class="logo">
+  </div>
   <div class="header">
-    <img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" class="logo">
     <div class="check">
       <svg viewBox="0 0 24 24" fill="none" stroke="#C2AB82" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h1 class="title">Votre participation a ${ev.name} est confirmee !</h1>
-    <p class="subtitle">Vous trouverez ci-dessous le QR code a presenter a votre arrivee</p>
+    <h1 class="title">Votre participation \u00e0 ${ev.name} est confirm\u00e9e !</h1>
+    <p class="subtitle">Vous trouverez ci-dessous le QR code \u00e0 pr\u00e9senter \u00e0 votre arriv\u00e9e</p>
   </div>
   <div class="body">
     <p class="qr-label">Votre QR Code personnel</p>
     <div class="qr-wrap">
       <img src="${qrImageUrl}" alt="QR Code" class="qr-img">
     </div>
-    <p class="present">Presentez ce QR code <strong>a l'entree de l'evenement</strong></p>
+    <p class="present">Pr\u00e9sentez ce QR code <strong>\u00e0 l'entr\u00e9e de l'\u00e9v\u00e9nement</strong></p>
     <div class="sep"></div>
     <div class="details">
       <div class="detail-row">
@@ -102,10 +105,10 @@ body{min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;
     </div>
   </div>
   <div class="tip">
-    <p>Astuce : faites une <strong>capture d'ecran</strong> pour y acceder facilement le jour J !</p>
+    <p>Astuce : faites une <strong>capture d'\u00e9cran</strong> pour y acc\u00e9der facilement le jour J !</p>
   </div>
   <div class="footer">
-    <p>&copy; 2026 <a href="mailto:admissions@diploma-sante.fr">Diploma Sante</a></p>
+    <p>&copy; 2026 <a href="mailto:admissions@diploma-sante.fr">Diploma Sant\u00e9</a></p>
   </div>
 </div>
 </body>
