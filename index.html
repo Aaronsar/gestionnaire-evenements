@@ -1820,6 +1820,16 @@ function statusLabel(status) {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  // Check for ?qr=CODE query parameter (public QR page, no auth)
+  const urlParams = new URLSearchParams(window.location.search);
+  const qrCode = urlParams.get('qr');
+  if (qrCode) {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('page-qr').style.display = 'block';
+    loadQrPage(qrCode);
+    return;
+  }
   handleRoute();
 });
 
