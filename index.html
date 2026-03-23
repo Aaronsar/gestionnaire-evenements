@@ -201,6 +201,22 @@
           </div>
         </div>
 
+        <!-- Top events by check-in rate -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 class="text-sm font-semibold text-gray-900 mb-4">Taux de presence par evenement</h3>
+            <div id="dashboard-rates" class="space-y-3">
+              <p class="text-gray-400 text-sm">Chargement...</p>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 class="text-sm font-semibold text-gray-900 mb-4">Dernieres inscriptions</h3>
+            <div id="dashboard-recent-regs" class="space-y-2 max-h-64 overflow-y-auto">
+              <p class="text-gray-400 text-sm">Chargement...</p>
+            </div>
+          </div>
+        </div>
+
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Prochains evenements</h2>
         <div id="dashboard-upcoming" class="space-y-3">
           <p class="text-gray-400 text-sm">Chargement...</p>
@@ -209,16 +225,38 @@
 
       <!-- ======== EVENTS LIST ======== -->
       <div id="page-events" class="page fade-in">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-4">
           <h1 class="text-2xl font-bold text-gray-900">Evenements</h1>
           <a href="#event-new" class="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
             Nouveau
           </a>
         </div>
+        <!-- Search & Filters -->
+        <div class="flex flex-wrap gap-3 mb-4">
+          <div class="relative flex-1 min-w-[200px]">
+            <input type="text" id="events-search" placeholder="Rechercher un evenement..."
+              class="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+              oninput="filterEventsList()">
+            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <select id="events-filter-status" class="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" onchange="filterEventsList()">
+            <option value="">Tous les statuts</option>
+            <option value="published">Publies</option>
+            <option value="draft">Brouillons</option>
+            <option value="completed">Termines</option>
+            <option value="cancelled">Annules</option>
+          </select>
+          <select id="events-filter-time" class="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" onchange="filterEventsList()">
+            <option value="">Toutes les dates</option>
+            <option value="upcoming">A venir</option>
+            <option value="past">Passes</option>
+          </select>
+        </div>
         <div id="events-list" class="space-y-3">
           <p class="text-gray-400 text-sm">Chargement...</p>
         </div>
+        <div id="events-pagination" class="flex items-center justify-center gap-2 mt-4 hidden"></div>
       </div>
 
       <!-- ======== NEW EVENT ======== -->
@@ -490,6 +528,14 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
             Scanner les QR codes
           </button>
+          <button onclick="duplicateEvent()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Dupliquer
+          </button>
+          <button onclick="sendTestComms()" class="bg-purple-50 hover:bg-purple-100 text-purple-600 font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Envoyer test
+          </button>
           <button onclick="exportCSV()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             Exporter CSV
@@ -700,14 +746,13 @@
 // ============================================================
 const SUPABASE_URL = 'https://jhopwqpbaiyjfoggvcaf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impob3B3cXBiYWl5amZvZ2d2Y2FmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTI2OTEsImV4cCI6MjA4ODYyODY5MX0.rz3TJZryPxEf3P5kQgpzQkwN9aF8_F4eo4F03CEYVPs';
-const ADMIN_EMAIL = 'aaron@diploma-sante.fr';
-const ADMIN_PASSWORD = 'Neorah1105@!';
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentEventId = null;
 let scannerInstance = null;
 let scannerEventId = null;
+let currentUser = null;
 
 // ============================================================
 // TOAST
@@ -722,22 +767,30 @@ function showToast(message, type = 'success') {
 }
 
 // ============================================================
-// AUTH
+// AUTH (Supabase Auth)
 // ============================================================
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pw = document.getElementById('login-password').value;
-  if (email === ADMIN_EMAIL && pw === ADMIN_PASSWORD) {
-    localStorage.setItem('auth', 'true');
+  if (!email || !pw) { showToast('Email et mot de passe requis', 'error'); return; }
+  const btn = document.querySelector('#page-login button');
+  btn.disabled = true; btn.textContent = 'Connexion...';
+  try {
+    const { data, error } = await db.auth.signInWithPassword({ email, password: pw });
+    if (error) { showToast(error.message === 'Invalid login credentials' ? 'Email ou mot de passe incorrect' : error.message, 'error'); return; }
+    currentUser = data.user;
     showApp();
     navigate('dashboard');
-  } else {
-    showToast('Email ou mot de passe incorrect', 'error');
+  } catch (e) {
+    showToast('Erreur de connexion', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Se connecter';
   }
 }
 
-function doLogout() {
-  localStorage.removeItem('auth');
+async function doLogout() {
+  await db.auth.signOut();
+  currentUser = null;
   document.getElementById('app-layout').style.display = 'none';
   document.getElementById('page-login').classList.add('active');
 }
@@ -747,13 +800,24 @@ function showApp() {
   document.getElementById('app-layout').style.display = 'block';
 }
 
-function checkAuth() {
-  if (localStorage.getItem('auth') === 'true') {
+async function checkAuth() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
     showApp();
     return true;
   }
   return false;
 }
+
+// Listen to auth state changes (auto-logout on token expiry)
+db.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    currentUser = null;
+    document.getElementById('app-layout').style.display = 'none';
+    document.getElementById('page-login').classList.add('active');
+  }
+});
 
 // ============================================================
 // ROUTING
@@ -762,7 +826,7 @@ function navigate(page) {
   window.location.hash = page;
 }
 
-function handleRoute() {
+async function handleRoute() {
   const hash = window.location.hash.slice(1) || 'dashboard';
   const parts = hash.split('/');
   const page = parts[0];
@@ -779,7 +843,7 @@ function handleRoute() {
   // Hide QR page if navigating away
   document.getElementById('page-qr').style.display = 'none';
 
-  if (!checkAuth()) return;
+  if (!(await checkAuth())) return;
 
   // Hide all pages
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -918,11 +982,11 @@ function toggleMobileMenu() {
 }
 
 // ============================================================
-// DASHBOARD
+// DASHBOARD (enrichi)
 // ============================================================
 async function loadDashboard() {
   const { data: events } = await db.from('events').select('*').order('event_date', { ascending: true });
-  const { data: registrations } = await db.from('registrations').select('checked_in');
+  const { data: registrations } = await db.from('registrations').select('id, checked_in, first_name, last_name, email, event_id, registered_at').order('registered_at', { ascending: false });
 
   const totalEvents = events?.length || 0;
   const totalRegs = registrations?.length || 0;
@@ -932,58 +996,127 @@ async function loadDashboard() {
   document.getElementById('stat-registrations').textContent = totalRegs;
   document.getElementById('stat-checkins').textContent = totalCheckins;
 
-  // Upcoming events
-  const upcoming = events?.filter(e => new Date(e.event_date) >= new Date()) || [];
-  const container = document.getElementById('dashboard-upcoming');
+  // Rates per event
+  const ratesContainer = document.getElementById('dashboard-rates');
+  const eventsWithRegs = (events || []).filter(e => e.status === 'published' || e.status === 'completed');
+  if (eventsWithRegs.length === 0) {
+    ratesContainer.innerHTML = '<p class="text-gray-400 text-sm">Aucun evenement publie</p>';
+  } else {
+    ratesContainer.innerHTML = eventsWithRegs.slice(0, 5).map(e => {
+      const evRegs = (registrations || []).filter(r => r.event_id === e.id);
+      const total = evRegs.length;
+      const checked = evRegs.filter(r => r.checked_in).length;
+      const rate = total > 0 ? Math.round((checked / total) * 100) : 0;
+      const isPast = new Date(e.event_date) < new Date();
+      return `<a href="#event/${e.id}" class="block"><div class="flex items-center justify-between mb-1"><span class="text-sm font-medium text-gray-700 truncate flex-1">${esc(e.name)}</span><span class="text-xs text-gray-500 ml-2">${checked}/${total} (${rate}%)</span></div><div class="w-full bg-gray-100 rounded-full h-2"><div class="h-2 rounded-full transition-all ${isPast ? (rate >= 70 ? 'bg-green-500' : rate >= 40 ? 'bg-yellow-500' : 'bg-red-400') : 'bg-primary-500'}" style="width:${rate}%"></div></div></a>`;
+    }).join('');
+  }
 
+  // Recent registrations
+  const recentRegsContainer = document.getElementById('dashboard-recent-regs');
+  const evMap = {};
+  (events || []).forEach(e => evMap[e.id] = e.name);
+  const recentRegs = (registrations || []).slice(0, 8);
+  if (recentRegs.length === 0) {
+    recentRegsContainer.innerHTML = '<p class="text-gray-400 text-sm">Aucune inscription</p>';
+  } else {
+    recentRegsContainer.innerHTML = recentRegs.map(r => {
+      const ago = timeAgo(r.registered_at);
+      return `<div class="flex items-center justify-between py-1.5"><div class="flex-1 min-w-0"><p class="text-sm font-medium text-gray-800 truncate">${esc(r.first_name || '')} ${esc(r.last_name || '')}</p><p class="text-xs text-gray-400 truncate">${esc(evMap[r.event_id] || '')}</p></div><span class="text-xs text-gray-400 ml-2 flex-shrink-0">${ago}</span></div>`;
+    }).join('');
+  }
+
+  // Upcoming events with countdown
+  const upcoming = (events || []).filter(e => new Date(e.event_date) >= new Date());
+  const container = document.getElementById('dashboard-upcoming');
   if (upcoming.length === 0) {
     container.innerHTML = '<p class="text-gray-400 text-sm">Aucun evenement a venir</p>';
     return;
   }
+  container.innerHTML = upcoming.slice(0, 5).map(e => {
+    const diff = Math.ceil((new Date(e.event_date) - new Date()) / (1000*60*60*24));
+    const countdown = diff === 0 ? "Aujourd'hui" : diff === 1 ? 'Demain' : `J-${diff}`;
+    return `<a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition"><div class="flex items-center justify-between"><div class="flex-1 min-w-0"><p class="font-semibold text-gray-900">${esc(e.name)}</p><p class="text-sm text-gray-500">${formatEventSummary(e)}</p></div><div class="flex items-center gap-2 ml-3"><span class="text-xs px-2 py-1 rounded-full bg-primary-50 text-primary-700 font-bold">${countdown}</span><span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span></div></div></a>`;
+  }).join('');
+}
 
-  container.innerHTML = upcoming.slice(0, 5).map(e => `
-    <a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="font-semibold text-gray-900">${esc(e.name)}</p>
-          <p class="text-sm text-gray-500">${formatEventSummary(e)}</p>
-        </div>
-        <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
-      </div>
-    </a>
-  `).join('');
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "a l'instant";
+  if (m < 60) return `il y a ${m}min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `il y a ${h}h`;
+  const d = Math.floor(h / 24);
+  return `il y a ${d}j`;
 }
 
 // ============================================================
-// EVENTS LIST
+// EVENTS LIST (with search, filters, pagination)
 // ============================================================
+let allEventsCache = [];
+const EVENTS_PER_PAGE = 15;
+let eventsPage = 0;
+
 async function loadEvents() {
   const { data: events } = await db.from('events').select('*').order('event_date', { ascending: false });
+  allEventsCache = events || [];
+  eventsPage = 0;
+  filterEventsList();
+}
+
+function filterEventsList() {
+  const query = (document.getElementById('events-search')?.value || '').toLowerCase();
+  const statusFilter = document.getElementById('events-filter-status')?.value || '';
+  const timeFilter = document.getElementById('events-filter-time')?.value || '';
+  const now = new Date();
+
+  let filtered = allEventsCache.filter(e => {
+    if (query && !e.name.toLowerCase().includes(query) && !(e.location || '').toLowerCase().includes(query)) return false;
+    if (statusFilter && e.status !== statusFilter) return false;
+    if (timeFilter === 'upcoming' && new Date(e.event_date) < now) return false;
+    if (timeFilter === 'past' && new Date(e.event_date) >= now) return false;
+    return true;
+  });
+
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / EVENTS_PER_PAGE);
+  if (eventsPage >= totalPages) eventsPage = Math.max(0, totalPages - 1);
+  const start = eventsPage * EVENTS_PER_PAGE;
+  const page = filtered.slice(start, start + EVENTS_PER_PAGE);
 
   const container = document.getElementById('events-list');
-
-  if (!events || events.length === 0) {
-    container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center border border-gray-100"><p class="text-gray-400">Aucun evenement. <a href="#event-new" class="text-primary-600 hover:underline">Creer le premier</a></p></div>';
-    return;
+  if (total === 0) {
+    container.innerHTML = '<div class="bg-white rounded-xl p-8 text-center border border-gray-100"><p class="text-gray-400">Aucun evenement trouve. <a href="#event-new" class="text-primary-600 hover:underline">Creer le premier</a></p></div>';
+  } else {
+    container.innerHTML = page.map(e => `
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition flex items-center justify-between">
+        <a href="#event/${e.id}" class="flex-1 min-w-0">
+          <p class="font-semibold text-gray-900">${esc(e.name)}</p>
+          <p class="text-sm text-gray-500 truncate">${formatEventSummary(e)}</p>
+        </a>
+        <div class="flex items-center gap-2 ml-3 flex-shrink-0">
+          <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
+          <button onclick="event.stopPropagation(); deleteEventById('${e.id}', '${esc(e.name).replace(/'/g,"\\'")}')" class="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition" title="Supprimer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+          <a href="#event/${e.id}" class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    `).join('');
   }
 
-  container.innerHTML = events.map(e => `
-    <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition flex items-center justify-between">
-      <a href="#event/${e.id}" class="flex-1 min-w-0">
-        <p class="font-semibold text-gray-900">${esc(e.name)}</p>
-        <p class="text-sm text-gray-500 truncate">${formatEventSummary(e)}</p>
-      </a>
-      <div class="flex items-center gap-2 ml-3 flex-shrink-0">
-        <span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span>
-        <button onclick="event.stopPropagation(); deleteEventById('${e.id}', '${esc(e.name).replace(/'/g,"\\'")}')" class="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition" title="Supprimer">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        </button>
-        <a href="#event/${e.id}" class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-        </a>
-      </div>
-    </div>
-  `).join('');
+  // Pagination
+  const pagEl = document.getElementById('events-pagination');
+  if (totalPages <= 1) { pagEl.classList.add('hidden'); return; }
+  pagEl.classList.remove('hidden');
+  pagEl.innerHTML = `
+    <button onclick="eventsPage=Math.max(0,eventsPage-1);filterEventsList()" class="px-3 py-1.5 rounded-lg text-sm ${eventsPage === 0 ? 'text-gray-300 cursor-default' : 'text-gray-600 hover:bg-gray-100'}" ${eventsPage === 0 ? 'disabled' : ''}>&larr;</button>
+    <span class="text-sm text-gray-500">${eventsPage + 1} / ${totalPages} (${total} evenements)</span>
+    <button onclick="eventsPage=Math.min(${totalPages-1},eventsPage+1);filterEventsList()" class="px-3 py-1.5 rounded-lg text-sm ${eventsPage >= totalPages - 1 ? 'text-gray-300 cursor-default' : 'text-gray-600 hover:bg-gray-100'}" ${eventsPage >= totalPages - 1 ? 'disabled' : ''}>&rarr;</button>
+  `;
 }
 
 // ============================================================
@@ -1608,28 +1741,87 @@ async function deleteEventById(id, name) {
   loadEvents();
 }
 
-function exportCSV() {
-  const rows = document.querySelectorAll('#detail-registrations tr');
-  if (rows.length === 0) return;
+async function exportCSV() {
+  if (!currentEventId) return;
+  const { data: regs } = await db.from('registrations').select('*').eq('event_id', currentEventId).order('registered_at', { ascending: true });
+  if (!regs || regs.length === 0) { showToast('Aucune inscription a exporter', 'warning'); return; }
 
-  let csv = 'Nom,Email,Entreprise,Statut,Check-in\n';
-  rows.forEach(row => {
-    const cells = row.querySelectorAll('td');
-    if (cells.length >= 5) {
-      const name = cells[0].textContent.trim();
-      const email = cells[1].textContent.trim();
-      const company = cells[2].textContent.trim();
-      const status = cells[3].textContent.trim();
-      const checkin = cells[4].textContent.trim();
-      csv += `"${name}","${email}","${company}","${status}","${checkin}"\n`;
-    }
+  const evName = document.getElementById('detail-event-name').textContent || 'evenement';
+  let csv = '\ufeffPrenom,Nom,Email,Telephone,Entreprise,Statut,Heure check-in,Date inscription,QR Code\n';
+  regs.forEach(r => {
+    const status = r.checked_in ? 'Present' : 'En attente';
+    const checkinAt = r.checked_in_at ? formatDateTime(r.checked_in_at) : '';
+    const regAt = r.registered_at ? formatDateTime(r.registered_at) : '';
+    csv += `"${r.first_name || ''}","${r.last_name || ''}","${r.email || ''}","${r.phone || ''}","${r.company || ''}","${status}","${checkinAt}","${regAt}","${r.qr_code || ''}"\n`;
   });
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `inscriptions_${currentEventId}.csv`;
+  link.download = `inscriptions_${evName.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
   link.click();
+  showToast(`${regs.length} inscription(s) exportee(s)`);
+}
+
+// ============================================================
+// DUPLICATE EVENT
+// ============================================================
+async function duplicateEvent() {
+  if (!currentEventId || !previewEvent) return;
+  if (!confirm(`Dupliquer l'evenement "${previewEvent.name}" ?`)) return;
+  const ev = previewEvent;
+  const { data: newEvent, error } = await db.from('events').insert({
+    name: ev.name + ' (copie)',
+    article: ev.article,
+    description: ev.description,
+    brief: ev.brief,
+    event_date: ev.event_date,
+    event_time_end: ev.event_time_end,
+    location: ev.location,
+    max_capacity: ev.max_capacity,
+    status: 'draft',
+    hubspot_property_name: null,
+    sms_factor_enabled: ev.sms_factor_enabled,
+    sms_sender: ev.sms_sender,
+    sms_push_type: ev.sms_push_type,
+    sms_stop: ev.sms_stop,
+    zoom_join_url: ev.zoom_join_url,
+    custom_sms: ev.custom_sms,
+    custom_emails: ev.custom_emails
+  }).select().single();
+  if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+  // Duplicate linked forms
+  const { data: forms } = await db.from('event_forms').select('*').eq('event_id', currentEventId);
+  if (forms && forms.length > 0) {
+    await db.from('event_forms').insert(forms.map(f => ({ event_id: newEvent.id, hubspot_form_id: f.hubspot_form_id, form_name: f.form_name })));
+  }
+  showToast('Evenement duplique en brouillon !');
+  navigate('event/' + newEvent.id);
+}
+
+// ============================================================
+// SEND TEST COMMS
+// ============================================================
+async function sendTestComms() {
+  if (!currentEventId || !previewEvent) return;
+  const email = currentUser?.email;
+  if (!email) { showToast('Impossible de determiner votre email', 'error'); return; }
+  if (!confirm(`Envoyer un email de test (confirmation) a ${email} ?`)) return;
+  try {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/send-reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: true, event_id: currentEventId, test_email: email, type: 'confirmation' })
+    });
+    const data = await res.json();
+    if (data.success || data.sent) {
+      showToast(`Email test envoye a ${email} !`);
+    } else {
+      showToast('Erreur: ' + (data.error || 'inconnue'), 'warning');
+    }
+  } catch (e) {
+    showToast('Erreur envoi test: ' + e.message, 'error');
+  }
 }
 
 // ============================================================
@@ -2021,9 +2213,50 @@ function statusLabel(status) {
 }
 
 // ============================================================
+// SUPABASE REALTIME (notifications temps reel)
+// ============================================================
+let realtimeChannel = null;
+function setupRealtime() {
+  if (realtimeChannel) return;
+  realtimeChannel = db.channel('registrations-changes')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'registrations' }, payload => {
+      const r = payload.new;
+      showToast(`Nouvelle inscription : ${r.first_name || ''} ${r.last_name || ''}`, 'success');
+      // Refresh dashboard if visible
+      if (document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
+      // Refresh detail page if visible and same event
+      if (document.getElementById('page-event-detail').classList.contains('active') && currentEventId === r.event_id) loadEventDetail(r.event_id);
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'registrations' }, payload => {
+      const r = payload.new;
+      if (r.checked_in && !payload.old.checked_in) {
+        // Refresh scanner stats if visible
+        if (document.getElementById('page-scanner').classList.contains('active') && scannerEventId === r.event_id) updateScannerStats(r.event_id);
+      }
+    })
+    .subscribe();
+}
+
+// ============================================================
+// API HELPER (retry + error handling)
+// ============================================================
+async function fetchWithRetry(url, options = {}, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok || i === retries) return res;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    } catch (e) {
+      if (i === retries) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+}
+
+// ============================================================
 // INIT
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Check for ?qr=CODE query parameter (public QR page, no auth)
   const urlParams = new URLSearchParams(window.location.search);
   const qrCode = urlParams.get('qr');
@@ -2034,7 +2267,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadQrPage(qrCode);
     return;
   }
-  handleRoute();
+  await handleRoute();
+  // Setup realtime after auth
+  const { data: { session } } = await db.auth.getSession();
+  if (session) setupRealtime();
 });
 
 </script>
