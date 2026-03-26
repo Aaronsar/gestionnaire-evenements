@@ -885,9 +885,14 @@ function updateNavForBrand() {
   // HubSpot property
   const hubspotPropEl = document.getElementById('evt-hubspot-prop');
   if (hubspotPropEl) hubspotPropEl.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
-  // SMS Factor section
+  // SMS Factor section - visible for both brands, default sender changes
   const smsFactorEl = document.getElementById('evt-sms-factor');
-  if (smsFactorEl) smsFactorEl.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
+  if (smsFactorEl) {
+    smsFactorEl.closest('.md\\:col-span-2').style.display = '';
+    const senderInput = document.getElementById('evt-sms-sender');
+    if (senderInput && senderInput.value === 'DIPLOMA' && isEdumove) senderInput.value = 'EDUMOVE';
+    if (senderInput && senderInput.value === 'EDUMOVE' && !isEdumove) senderInput.value = 'DIPLOMA';
+  }
   // AI customization section
   const aiSection = document.querySelector('#page-event-new .mt-8.border-t.border-gray-200.pt-6');
   if (aiSection) aiSection.style.display = isEdumove ? 'none' : '';
@@ -1634,10 +1639,10 @@ async function saveEvent() {
   const capacity = document.getElementById('evt-capacity').value;
   const status = document.getElementById('evt-status').value;
   const hubspotProp = isEdumove ? '' : document.getElementById('evt-hubspot-prop').value.trim();
-  const smsFactorEnabled = isEdumove ? false : document.getElementById('evt-sms-factor').checked;
-  const smsSender = isEdumove ? 'EDUMOVE' : (document.getElementById('evt-sms-sender').value.trim() || 'DIPLOMA');
-  const smsPushType = isEdumove ? 1 : parseInt(document.getElementById('evt-sms-push-type').value);
-  const smsStop = isEdumove ? false : document.getElementById('evt-sms-stop').checked;
+  const smsFactorEnabled = document.getElementById('evt-sms-factor').checked;
+  const smsSender = document.getElementById('evt-sms-sender').value.trim() || (isEdumove ? 'EDUMOVE' : 'DIPLOMA');
+  const smsPushType = parseInt(document.getElementById('evt-sms-push-type').value);
+  const smsStop = document.getElementById('evt-sms-stop').checked;
 
   const isVisio = location === 'visio' || isEdumove;
   const visioLink = isEdumove
