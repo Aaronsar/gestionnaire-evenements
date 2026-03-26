@@ -2406,6 +2406,22 @@ function pvAccess(ev) { return ev.zoom_join_url ? pvVisioBtn(ev.zoom_join_url) :
 // ============================================================
 // EDUMOVE EMAIL TEMPLATES (preview)
 // ============================================================
+function pvEdumoveSmsBody(ev, type) {
+  const d = new Date(ev.event_date);
+  const dateStr = d.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  const ti = pvEdumoveTime(ev);
+  const n = ev.name;
+  const zoom = ev.zoom_join_url || BRAND_CONFIG.edumove.defaultZoom;
+  const m = {
+    'confirmation': `{prenom}, votre inscription au webinaire "${n}" est confirmee ! RDV le ${dateStr} a ${ti}. Vous recevrez le lien Zoom le jour J.`,
+    'j-7': `{prenom}, le webinaire "${n}" a lieu dans 7 jours (${dateStr} a ${ti}). Bloquez la date !`,
+    'j-1': `{prenom}, c'est DEMAIN ! Webinaire "${n}" a ${ti}. Le lien Zoom sera envoye demain matin. Preparez vos questions !`,
+    'j-0-10h': `{prenom}, c'est ce soir ! Webinaire "${n}" a ${ti}. Rejoignez-nous : ${zoom}`,
+    'j-0-18h25': `{prenom}, le webinaire "${n}" commence dans 5 min ! Rejoignez-nous vite : ${zoom}`,
+  };
+  return m[type] || `Rappel : webinaire "${n}" le ${dateStr} a ${ti}.`;
+}
+
 function renderEdumovePreviews(ev) {
   const emailTypes = [
     {id:'confirmation', lb:'Confirmation'},
@@ -2414,8 +2430,15 @@ function renderEdumovePreviews(ev) {
     {id:'j-0-10h', lb:'Jour J 10h'},
     {id:'j-0-18h25', lb:'J-0 18h25'},
   ];
+  const smsTypes = [
+    {id:'confirmation', lb:'Confirmation'},
+    {id:'j-7', lb:'J-7'},
+    {id:'j-1', lb:'J-1 (veille)'},
+    {id:'j-0-10h', lb:'J-0 ce soir'},
+    {id:'j-0-18h25', lb:'5 min avant'},
+  ];
   window._emailTypes = emailTypes;
-  window._smsTypes = []; // No SMS for Edumove
+  window._smsTypes = smsTypes;
 
   emailTabValues = {};
   const ce = ev.custom_emails || {};
@@ -2425,9 +2448,24 @@ function renderEdumovePreviews(ev) {
     `<button onclick="showEmailTab('${t.id}')" class="email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${i===0?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-tab="${t.id}">${t.lb}</button>`
   ).join('');
 
-  // Hide SMS section
+  // Show SMS section with Edumove SMS previews
   const smsSectionEl = document.getElementById('sms-preview-list')?.closest('.bg-gray-50.rounded-2xl');
-  if (smsSectionEl) smsSectionEl.style.display = 'none';
+  if (smsSectionEl) smsSectionEl.style.display = '';
+
+  const smsEnabled = ev.sms_factor_enabled;
+  const smsSender = ev.sms_sender || 'EDUMOVE';
+  const smsPushType = ev.sms_push_type === 0 ? 'Marketing' : 'Notif';
+  const stopInfo = ev.sms_stop ? ' + mention STOP' : '';
+  const cs = ev.custom_sms || {};
+
+  document.getElementById('sms-preview-list').innerHTML = (!smsEnabled
+    ? `<div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center"><p class="text-sm text-yellow-700">SMS Factor n'est pas activ\u00e9 pour cet \u00e9v\u00e9nement. Activez-le lors de la cr\u00e9ation pour envoyer des SMS.</p></div>`
+    : smsTypes.map(t => {
+      const dflt = pvEdumoveSmsBody(ev, t.id);
+      const display = cs[t.id] || dflt;
+      const zoomInSms = t.id === 'j-0-10h' || t.id === 'j-0-18h25';
+      return `<div class="bg-gray-50 rounded-xl p-4"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-700">${t.lb}</span><span class="text-xs text-gray-400">de ${esc(smsSender)}</span><span class="text-xs px-2 py-0.5 rounded ${ev.sms_push_type===0?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}">${smsPushType}</span></div><textarea id="sms-${t.id}" rows="3" class="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">${esc(display)}</textarea>${zoomInSms ? `<p class="text-xs text-gray-400 mt-1 italic">\u2139\ufe0f Le lien Zoom sera ajout\u00e9 automatiquement${stopInfo}</p>` : `<p class="text-xs text-gray-400 mt-1 italic">\u2139\ufe0f${stopInfo ? ' Mention STOP ajout\u00e9e' : ''}</p>`}</div>`;
+    }).join(''));
 
   currentEmailTab = null;
   showEmailTab(emailTypes[0].id);
