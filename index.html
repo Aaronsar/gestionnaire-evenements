@@ -860,9 +860,13 @@ function updateNavForBrand() {
     const nameInput = document.getElementById('evt-name');
     if (nameInput) nameInput.placeholder = isEdumove ? 'Ex: Webinaire orientation post-bac' : 'Ex: Forum des etudes de medecine 2026';
   }
-  // Location (campus) selector
+  // Location (campus) selector - hide only the select and its label, not the parent div (which contains visio-link-container)
   const locationEl = document.getElementById('evt-location');
-  if (locationEl) locationEl.closest('div').style.display = isEdumove ? 'none' : '';
+  if (locationEl) {
+    locationEl.style.display = isEdumove ? 'none' : '';
+    const locationLabel = locationEl.previousElementSibling;
+    if (locationLabel && locationLabel.tagName === 'LABEL') locationLabel.style.display = isEdumove ? 'none' : '';
+  }
   // Brief section
   const briefSection = document.getElementById('evt-brief');
   if (briefSection) briefSection.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
