@@ -3,17 +3,16 @@ export default async function handler(req, res) {
   if (!template) return res.status(400).send('Param\u00e8tre "template" requis. Ex: ?template=confirmation&prenom=Aaron');
 
   const firstName = prenom || 'Jean';
-  const lastName = 'Dupont';
 
   // Map template aliases
   const templateMap = {
     'confirmation': 'confirmation',
     'j-7': 'j-7',
     'j-1': 'j-1',
-    'j-0-matin': 'j-0-10h',
-    'j-0-10h': 'j-0-10h',
-    'j-0-5min': 'j-0-18h25',
-    'j-0-18h25': 'j-0-18h25',
+    'j-0-matin': 'j-0-matin',
+    'j-0-10h': 'j-0-matin',
+    'j-0-5min': 'j-0-5min',
+    'j-0-18h25': 'j-0-5min',
   };
   const type = templateMap[template];
   if (!type) {
@@ -21,12 +20,12 @@ export default async function handler(req, res) {
   }
 
   // Load event data if event_id provided, otherwise use sample data
-  let event = {
+  let ev = {
     name: 'Comment financer ses \u00e9tudes de Sant\u00e9 en Europe ?',
-    event_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    event_time_end: '19:30',
+    event_date: '2026-04-15T18:30:00+02:00',
+    event_time_end: '19:15',
     zoom_join_url: 'https://us02web.zoom.us/j/83013598154',
-    location: 'Visioconference',
+    description: "Avec la participation exceptionnelle du LCL, partenaire officiel d'Edumove, d\u00e9couvrez toutes les solutions pour financer vos \u00e9tudes de sant\u00e9 en Europe.",
   };
 
   if (event_id) {
@@ -38,81 +37,223 @@ export default async function handler(req, res) {
         { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
       );
       const data = await resp.json();
-      if (data && data.length > 0) event = data[0];
+      if (data && data.length > 0) ev = data[0];
     } catch (e) { /* use sample data */ }
   }
 
-  const html = buildEdumoveEmail(firstName, lastName, event, type);
+  const html = buildEmail(firstName, ev, type);
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=60');
   return res.status(200).send(html);
 }
 
-function titleCase(s) { return s ? s.toLowerCase().replace(/(?:^|\s|-)\S/g, c => c.toUpperCase()) : ''; }
-function ucfirst(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+// ════════════════════════════════════
+// TEMPLATE HELPERS (from Edumove site)
+// ════════════════════════════════════
 
-function fmtTimeRange(ev) {
+function fmtDate(ev) {
   const d = new Date(ev.event_date);
-  const s = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
-  return ev.event_time_end ? `De ${s} \u00e0 ${ev.event_time_end}` : `\u00c0 ${s}`;
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
 }
 
-function edumoveZoomBtn(url) {
-  return `<div style="background:linear-gradient(135deg,#EC680A,#D45A00);border-radius:12px;padding:24px;margin:28px 0;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.9);margin:0 0 12px;font-weight:700;">Rejoindre le webinaire</p><a href="${url}" style="display:inline-block;background:#FFF;color:#EC680A!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Rejoindre \u2192</a><p style="font-size:12px;color:rgba(255,255,255,0.6);margin:12px 0 0;word-break:break-all;">${url}</p></div>`;
-}
-
-function edumoveDetailTbl(ev, fn, ln) {
+function fmtTime(ev) {
   const d = new Date(ev.event_date);
-  const dateStr = ucfirst(d.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Europe/Paris' }));
-  const timeDisp = fmtTimeRange(ev);
-  return `<h2 style="font-family:'Inter',Arial,sans-serif;font-size:20px;color:#1B1D3A;margin:0 0 20px;padding-bottom:14px;border-bottom:2px solid rgba(236,104,10,0.2);font-weight:700;">D\u00e9tails du webinaire</h2><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;"><tr><td style="padding:8px 16px 8px 0;vertical-align:top;width:50%;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Webinaire</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">${ev.name}</p></td><td style="padding:8px 0 8px 16px;vertical-align:top;width:50%;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Date</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">${dateStr}<br>${timeDisp}</p></td></tr><tr><td style="padding:8px 16px 8px 0;vertical-align:top;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Format</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">En ligne (Zoom)</p></td><td style="padding:8px 0 8px 16px;vertical-align:top;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Participant</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">${fn} ${ln}</p></td></tr></table>`;
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(':', 'h');
 }
 
-function edumoveWrap(heroTitle, heroSub, preheader, body) {
-  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F5F7;font-family:'Inter',Arial,sans-serif;"><div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#F5F5F7;">${preheader}</div><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F7;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;"><img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" width="200" style="display:block;margin:0 auto;width:200px;"></div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:#1B1D3A;padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'Inter',Arial,sans-serif;font-size:26px;line-height:1.2;color:#FFF;margin:0 0 16px;font-weight:700;">${heroTitle}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroSub}</p><div style="width:48px;height:3px;background:#EC680A;margin:28px auto 0;border-radius:2px;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}</div></td></tr><tr><td><div style="background:#1B1D3A;padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'Inter',Arial,sans-serif;font-size:20px;color:#FFF;margin:0 0 12px;font-weight:700;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">L'\u00e9quipe Edumove a h\u00e2te de vous retrouver.</p><a href="mailto:admissions@edumove.fr" style="display:inline-block;background:#EC680A;color:#FFF!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Edumove</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} Edumove</p></td></tr></table></body></html>`;
+function fmtDuration(ev) {
+  if (!ev.event_time_end) return '45 minutes';
+  const d = new Date(ev.event_date);
+  const startH = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Paris' });
+  const [sh, sm] = startH.split(':').map(Number);
+  const [eh, em] = ev.event_time_end.split(':').map(Number);
+  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins >= 60) return mins % 60 === 0 ? `${mins / 60} heure${mins > 60 ? 's' : ''}` : `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}`;
+  return `${mins} minutes`;
 }
 
-function buildEdumoveEmail(firstName, lastName, ev, type) {
-  const fn = titleCase(firstName);
-  const ln = titleCase(lastName);
-  const zoomUrl = ev.zoom_join_url || 'https://us02web.zoom.us/j/83013598154';
-  const zoomBlock = edumoveZoomBtn(zoomUrl);
-  const details = edumoveDetailTbl(ev, fn, ln);
+function baseTemplate(content) {
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edumove \u2014 Webinaire</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+
+<!-- Header -->
+<tr>
+<td style="background-color:#1B1D3A;padding:28px 32px;text-align:center;">
+<img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" width="140" style="display:inline-block;filter:brightness(0) invert(1);" />
+</td>
+</tr>
+
+<!-- Content -->
+<tr>
+<td style="padding:32px;">
+${content}
+</td>
+</tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+function ctaButton(text, url) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto;">
+<tr>
+<td style="background-color:#EC680A;border-radius:8px;">
+<a href="${url}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;text-align:center;">${text}</a>
+</td>
+</tr>
+</table>`;
+}
+
+function eventInfoBlock(ev) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:20px 0;">
+<tr>
+<td style="padding:20px;">
+<p style="margin:0 0 8px;font-size:13px;color:#64748b;">\ud83d\udcc5 <strong style="color:#1B1D3A;">${fmtDate(ev)}</strong> \u00e0 <strong style="color:#1B1D3A;">${fmtTime(ev)}</strong></p>
+<p style="margin:0 0 8px;font-size:13px;color:#64748b;">\u23f1\ufe0f Dur\u00e9e : ${fmtDuration(ev)}</p>
+<p style="margin:0;font-size:13px;color:#64748b;">\ud83d\udcbb En ligne via Zoom</p>
+</td>
+</tr>
+</table>`;
+}
+
+// ════════════════════════════════════
+// 5 TEMPLATES
+// ════════════════════════════════════
+
+function buildEmail(prenom, ev, type) {
   const n = ev.name;
+  const zoom = ev.zoom_join_url || 'https://us02web.zoom.us/j/83013598154';
 
-  const templates = {
-    'confirmation': {
-      heroT: `<span style="color:#EC680A;">Votre inscription</span><br>est confirm\u00e9e !`,
-      heroS: `Merci pour votre inscription ! Votre lien de connexion Zoom se trouve ci-dessous.`,
-      pre: `Inscription confirm\u00e9e \u2014 ${n}`,
-      body: `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1B1D3A;">${fn}</strong>, merci pour votre inscription au webinaire <strong>${n}</strong> ! Nous avons h\u00e2te de vous y retrouver.</p>${details}${zoomBlock}<div style="background:rgba(97,92,165,0.1);border-left:4px solid #615CA5;border-radius:0 12px 12px 0;padding:20px 24px;"><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;font-style:italic;">Gardez le <strong style="color:#1B1D3A;">lien Zoom</strong> ci-dessus \u00e0 port\u00e9e de main pour le jour J.</p></div>`,
-    },
-    'j-7': {
-      heroT: `Plus que <span style="color:#EC680A;">7 jours</span><br>avant le webinaire !`,
-      heroS: `Bloquez la date dans votre agenda !`,
-      pre: `J-7 \u2014 ${n} approche !`,
-      body: `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1B1D3A;">${fn}</strong>, le webinaire <strong>${n}</strong> a lieu dans une semaine. Bloquez la date dans votre agenda !</p>${details}`,
-    },
-    'j-1': {
-      heroT: `C'est <span style="color:#EC680A;">demain</span> !`,
-      heroS: `Pr\u00e9parez vos questions pour le webinaire !`,
-      pre: `C'est demain \u2014 ${n}`,
-      body: `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1B1D3A;">${fn}</strong>, c'est demain ! Le webinaire <strong>${n}</strong> vous attend. Pr\u00e9parez vos questions !</p>${zoomBlock}`,
-    },
-    'j-0-10h': {
-      heroT: `C'est <span style="color:#EC680A;">aujourd'hui</span> !`,
-      heroS: `Le webinaire va bient\u00f4t commencer !`,
-      pre: `C'est aujourd'hui \u2014 ${n} !`,
-      body: `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">Bonjour <strong style="color:#1B1D3A;">${fn}</strong>, c'est aujourd'hui ! Retrouvez-nous pour le webinaire <strong>${n}</strong>. Votre lien Zoom est ci-dessous.</p>${zoomBlock}`,
-    },
-    'j-0-18h25': {
-      heroT: `\u00c7a commence dans <span style="color:#EC680A;">5 minutes</span> !`,
-      heroS: `Connectez-vous vite !`,
-      pre: `\u00c7a commence dans 5 minutes \u2014 ${n} !`,
-      body: `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;"><strong style="color:#1B1D3A;">${fn}</strong>, le webinaire <strong>${n}</strong> commence dans 5 minutes ! Cliquez sur le lien Zoom ci-dessous pour nous rejoindre.</p>${zoomBlock}`,
-    },
-  };
+  switch (type) {
+    case 'confirmation':
+      return baseTemplate(`
+<h1 style="margin:0 0 20px;font-size:24px;color:#1B1D3A;font-weight:700;">Inscription confirm\u00e9e ! \u2705</h1>
+<p style="margin:0 0 20px;font-size:15px;color:#334155;line-height:1.6;">
+  Bonjour ${prenom},
+</p>
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  Votre inscription au webinaire <strong style="color:#1B1D3A;">"${n}"</strong> est bien confirm\u00e9e.
+</p>
+${ev.description ? `<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">${ev.description}</p>` : ''}
 
-  const t = templates[type] || templates['confirmation'];
-  return edumoveWrap(t.heroT, t.heroS, t.pre, t.body);
+${eventInfoBlock(ev)}
+
+<p style="margin:16px 0;font-size:15px;color:#334155;line-height:1.6;">
+  Vous recevrez le lien de connexion Zoom par email le jour du webinaire. En attendant, vous pouvez d\u00e9couvrir nos formations.
+</p>
+
+${ctaButton("D\u00e9couvrir nos formations", "https://www.edumove.fr/formations/medecine")}
+
+<p style="margin:16px 0 0;font-size:13px;color:#94a3b8;text-align:center;">
+  Des questions ? R\u00e9pondez directement \u00e0 cet email ou appelez-nous au +33 1 89 74 42 57
+</p>
+`);
+
+    case 'j-7':
+      return baseTemplate(`
+<h1 style="margin:0 0 20px;font-size:24px;color:#1B1D3A;font-weight:700;">Plus qu'une semaine ! \ud83d\udcc5</h1>
+<p style="margin:0 0 20px;font-size:15px;color:#334155;line-height:1.6;">
+  Bonjour ${prenom},
+</p>
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  Le webinaire <strong style="color:#1B1D3A;">"${n}"</strong> a lieu dans exactement <strong>7 jours</strong>.
+</p>
+
+${eventInfoBlock(ev)}
+
+<p style="margin:16px 0;font-size:15px;color:#334155;line-height:1.6;">
+  <strong>Au programme :</strong>
+</p>
+<ul style="margin:0 0 16px;padding-left:20px;font-size:14px;color:#334155;line-height:1.8;">
+  <li>Les solutions de financement (pr\u00eat, bourses, aides)</li>
+  <li>Le remboursement diff\u00e9r\u00e9 : comment \u00e7a marche</li>
+  <li>L'accompagnement Edumove pour votre dossier</li>
+  <li>Session questions / r\u00e9ponses en direct</li>
+</ul>
+
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  En attendant, d\u00e9couvrez notre guide complet sur le financement :
+</p>
+
+${ctaButton("Guide financement", "https://www.edumove.fr/financement")}
+`);
+
+    case 'j-1':
+      return baseTemplate(`
+<h1 style="margin:0 0 20px;font-size:24px;color:#1B1D3A;font-weight:700;">C'est demain ! \ud83c\udfaf</h1>
+<p style="margin:0 0 20px;font-size:15px;color:#334155;line-height:1.6;">
+  Bonjour ${prenom},
+</p>
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  Le webinaire <strong style="color:#1B1D3A;">"${n}"</strong> a lieu <strong>demain</strong>.
+</p>
+
+${eventInfoBlock(ev)}
+
+<p style="margin:16px 0;font-size:15px;color:#334155;line-height:1.6;">
+  Pr\u00e9parez vos questions ! Un repr\u00e9sentant et l'\u00e9quipe Edumove seront l\u00e0 pour y r\u00e9pondre en direct.
+</p>
+
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  Le lien Zoom vous sera envoy\u00e9 demain matin par email.
+</p>
+
+${ctaButton("En savoir plus", "https://www.edumove.fr/financement")}
+`);
+
+    case 'j-0-matin':
+      return baseTemplate(`
+<h1 style="margin:0 0 20px;font-size:24px;color:#1B1D3A;font-weight:700;">C'est ce soir ! \ud83d\ude80</h1>
+<p style="margin:0 0 20px;font-size:15px;color:#334155;line-height:1.6;">
+  Bonjour ${prenom},
+</p>
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  Le webinaire <strong style="color:#1B1D3A;">"${n}"</strong> a lieu <strong>ce soir \u00e0 ${fmtTime(ev)}</strong>.
+</p>
+
+${eventInfoBlock(ev)}
+
+<p style="margin:16px 0;font-size:15px;color:#334155;line-height:1.6;">
+  Voici votre lien pour rejoindre le webinaire :
+</p>
+
+${ctaButton("Rejoindre le webinaire Zoom", zoom)}
+
+<p style="margin:16px 0;font-size:14px;color:#64748b;line-height:1.6;text-align:center;">
+  Le lien sera actif \u00e0 partir de ${fmtTime(ev).replace(/(\d+)h/, (_, h) => h + 'h')}. Connectez-vous quelques minutes en avance pour v\u00e9rifier votre micro et cam\u00e9ra.
+</p>
+`);
+
+    case 'j-0-5min':
+      return baseTemplate(`
+<h1 style="margin:0 0 20px;font-size:24px;color:#1B1D3A;font-weight:700;">On commence dans 5 minutes !</h1>
+<p style="margin:0 0 20px;font-size:15px;color:#334155;line-height:1.6;">
+  Bonjour ${prenom},
+</p>
+<p style="margin:0 0 16px;font-size:15px;color:#334155;line-height:1.6;">
+  Le webinaire commence dans quelques minutes. Rejoignez-nous maintenant !
+</p>
+
+${ctaButton("Rejoindre maintenant", zoom)}
+
+<p style="margin:16px 0;font-size:13px;color:#94a3b8;text-align:center;">
+  Si le bouton ne fonctionne pas, copiez ce lien : ${zoom}
+</p>
+`);
+
+    default:
+      return baseTemplate(`<p>Template inconnu</p>`);
+  }
 }
