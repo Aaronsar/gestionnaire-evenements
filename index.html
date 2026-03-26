@@ -99,6 +99,41 @@
 </div>
 
 <!-- ============================================================ -->
+<!-- BRAND SELECTOR PAGE -->
+<!-- ============================================================ -->
+<div id="page-brand-select" style="display:none;">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div class="max-w-2xl w-full px-4">
+      <h1 class="text-2xl font-bold text-gray-900 text-center mb-2">Choisissez votre plateforme</h1>
+      <p class="text-gray-500 text-center mb-8">Selectionnez la marque pour gerer vos evenements</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Diploma Sante Card -->
+        <button onclick="selectBrand('diploma')" class="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-[#C2AB82] hover:shadow-xl transition-all p-8 text-center group">
+          <img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma Sante" class="h-12 mx-auto mb-4">
+          <h2 class="text-lg font-bold" style="color:#1C2436;">Diploma Sante</h2>
+          <p class="text-sm text-gray-500 mt-2">Evenements presentiel & visio, QR codes, SMS, HubSpot</p>
+          <div class="mt-4 flex gap-2 justify-center flex-wrap">
+            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1C2436;color:#C2AB82;">QR Code</span>
+            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1C2436;color:#C2AB82;">SMS</span>
+            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1C2436;color:#C2AB82;">HubSpot</span>
+          </div>
+        </button>
+        <!-- Edumove Card -->
+        <button onclick="selectBrand('edumove')" class="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-[#EC680A] hover:shadow-xl transition-all p-8 text-center group">
+          <img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" class="h-12 mx-auto mb-4">
+          <h2 class="text-lg font-bold" style="color:#1B1D3A;">Edumove</h2>
+          <p class="text-sm text-gray-500 mt-2">Webinaires en ligne, rappels email via Brevo</p>
+          <div class="mt-4 flex gap-2 justify-center flex-wrap">
+            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1B1D3A;color:#EC680A;">Webinaires</span>
+            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#615CA5;color:white;">Email Brevo</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
 <!-- MAIN APP LAYOUT -->
 <!-- ============================================================ -->
 <div id="app-layout" style="display:none;">
@@ -128,7 +163,11 @@
         </a>
       </nav>
     </div>
-    <div class="absolute bottom-0 left-0 right-0 p-6">
+    <div class="absolute bottom-0 left-0 right-0 p-6 space-y-1">
+      <button onclick="switchBrand()" id="btn-switch-brand" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 transition w-full">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+        Changer de marque
+      </button>
       <button onclick="doLogout()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 transition w-full">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         Deconnexion
@@ -566,7 +605,7 @@
               <div class="flex items-center flex-wrap gap-2 mb-4">
                 <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                 <h4 class="text-base font-bold text-gray-900">Emails</h4>
-                <span class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 font-medium">Exp : admissions@diploma-sante.fr</span>
+                <span id="email-sender-badge" class="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 font-medium">Exp : admissions@diploma-sante.fr</span>
               </div>
               <div id="email-tabs" class="flex flex-wrap gap-2 mb-4"></div>
               <div class="bg-white rounded-xl p-4 border border-gray-200 mb-4">
@@ -753,6 +792,119 @@ let currentEventId = null;
 let scannerInstance = null;
 let scannerEventId = null;
 let currentUser = null;
+let currentBrand = null; // 'diploma' | 'edumove'
+
+// ============================================================
+// BRAND CONFIG
+// ============================================================
+const BRAND_CONFIG = {
+  diploma: {
+    name: 'Diploma Sante',
+    logo: 'https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png',
+    primary: '#1C2436', accent: '#C2AB82',
+    sidebarTitle: 'Diploma Events',
+    sender: 'admissions@diploma-sante.fr', senderName: 'Diploma Sante',
+  },
+  edumove: {
+    name: 'Edumove',
+    logo: 'https://www.edumove.fr/edumove-logo.svg',
+    primary: '#1B1D3A', accent: '#EC680A', violet: '#615CA5',
+    sidebarTitle: 'Edumove Events',
+    sender: 'admissions@edumove.fr', senderName: 'Edumove',
+    defaultZoom: 'https://us02web.zoom.us/j/83013598154',
+  }
+};
+
+function selectBrand(brand) {
+  currentBrand = brand;
+  sessionStorage.setItem('currentBrand', brand);
+  document.getElementById('page-brand-select').style.display = 'none';
+  applyBrandTheme(brand);
+  showApp();
+  navigate('dashboard');
+}
+
+function switchBrand() {
+  currentBrand = null;
+  sessionStorage.removeItem('currentBrand');
+  document.getElementById('app-layout').style.display = 'none';
+  document.getElementById('page-brand-select').style.display = 'block';
+}
+
+function applyBrandTheme(brand) {
+  const config = BRAND_CONFIG[brand];
+  // Update sidebar title & logo
+  const sidebarTitle = document.querySelector('#app-layout .font-bold.text-gray-900');
+  if (sidebarTitle) sidebarTitle.textContent = config.sidebarTitle;
+  const mobileTitle = document.querySelector('.lg\\:hidden .font-bold.text-gray-900');
+  if (mobileTitle) mobileTitle.textContent = config.sidebarTitle;
+  // Update sidebar icon color
+  const iconContainer = document.querySelector('#app-layout .w-10.h-10');
+  if (iconContainer) {
+    iconContainer.style.background = brand === 'edumove' ? '#EC680A20' : '';
+    const svg = iconContainer.querySelector('svg');
+    if (svg) svg.style.color = brand === 'edumove' ? '#EC680A' : '';
+  }
+}
+
+function updateNavForBrand() {
+  const isEdumove = currentBrand === 'edumove';
+  // Hide article selector but keep name input visible
+  const articleSelect = document.getElementById('evt-article');
+  if (articleSelect) {
+    articleSelect.style.display = isEdumove ? 'none' : '';
+    // Also hide/show the article help text
+    const helpText = articleSelect.closest('.md\\:col-span-2')?.querySelector('.text-xs.text-gray-400');
+    if (helpText) helpText.style.display = isEdumove ? 'none' : '';
+    // Update placeholder for Edumove
+    const nameInput = document.getElementById('evt-name');
+    if (nameInput) nameInput.placeholder = isEdumove ? 'Ex: Webinaire orientation post-bac' : 'Ex: Forum des etudes de medecine 2026';
+  }
+  // Location (campus) selector
+  const locationEl = document.getElementById('evt-location');
+  if (locationEl) locationEl.closest('div').style.display = isEdumove ? 'none' : '';
+  // Brief section
+  const briefSection = document.getElementById('evt-brief');
+  if (briefSection) briefSection.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
+  // HubSpot property
+  const hubspotPropEl = document.getElementById('evt-hubspot-prop');
+  if (hubspotPropEl) hubspotPropEl.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
+  // SMS Factor section
+  const smsFactorEl = document.getElementById('evt-sms-factor');
+  if (smsFactorEl) smsFactorEl.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
+  // AI customization section
+  const aiSection = document.querySelector('#page-event-new .mt-8.border-t.border-gray-200.pt-6');
+  if (aiSection) aiSection.style.display = isEdumove ? 'none' : '';
+  // HubSpot forms section
+  const hubspotFormsSection = aiSection ? aiSection.nextElementSibling : null;
+  if (hubspotFormsSection && hubspotFormsSection.querySelector('[onclick="refreshHubspotForms()"]')) {
+    hubspotFormsSection.style.display = isEdumove ? 'none' : '';
+  }
+  // For Edumove: show visio link field always, pre-fill default zoom
+  if (isEdumove) {
+    document.getElementById('visio-link-container').classList.remove('hidden');
+    const visioInput = document.getElementById('evt-visio-link');
+    if (visioInput && !visioInput.value) visioInput.value = BRAND_CONFIG.edumove.defaultZoom;
+    // Update labels for Edumove
+    const timeLabel = document.querySelector('#time-range-fields label');
+    if (timeLabel) timeLabel.textContent = 'Heure de debut du webinaire *';
+    const timeEndLabel = document.querySelector('#time-end-field label');
+    if (timeEndLabel) timeEndLabel.textContent = 'Heure de fin du webinaire *';
+    // Update form title
+    const formTitle = document.querySelector('#page-event-new h1');
+    if (formTitle) formTitle.textContent = 'Nouveau webinaire';
+    // Update visio link label
+    const visioLabel = document.querySelector('#visio-link-container label');
+    if (visioLabel) visioLabel.textContent = 'Lien Zoom du webinaire *';
+  } else {
+    const formTitle = document.querySelector('#page-event-new h1');
+    if (formTitle) formTitle.textContent = 'Nouvel evenement';
+    const timeLabel = document.querySelector('#time-range-fields label');
+    if (timeLabel) timeLabel.textContent = 'Heure de debut *';
+    const timeEndLabel = document.querySelector('#time-end-field label');
+    if (timeEndLabel) timeEndLabel.textContent = 'Heure de fin *';
+  }
+}
 
 // ============================================================
 // TOAST
@@ -791,12 +943,24 @@ async function doLogin() {
 async function doLogout() {
   await db.auth.signOut();
   currentUser = null;
+  currentBrand = null;
+  sessionStorage.removeItem('currentBrand');
   document.getElementById('app-layout').style.display = 'none';
+  document.getElementById('page-brand-select').style.display = 'none';
   document.getElementById('page-login').classList.add('active');
 }
 
 function showApp() {
   document.getElementById('page-login').classList.remove('active');
+  if (!currentBrand) {
+    currentBrand = sessionStorage.getItem('currentBrand');
+    if (!currentBrand) {
+      document.getElementById('page-brand-select').style.display = 'block';
+      return;
+    }
+    applyBrandTheme(currentBrand);
+  }
+  document.getElementById('page-brand-select').style.display = 'none';
   document.getElementById('app-layout').style.display = 'block';
 }
 
@@ -985,8 +1149,12 @@ function toggleMobileMenu() {
 // DASHBOARD (enrichi)
 // ============================================================
 async function loadDashboard() {
-  const { data: events } = await db.from('events').select('*').order('event_date', { ascending: true });
-  const { data: registrations } = await db.from('registrations').select('id, checked_in, first_name, last_name, email, event_id, registered_at').order('registered_at', { ascending: false });
+  const brand = currentBrand || 'diploma';
+  const { data: events } = await db.from('events').select('*').eq('brand', brand).order('event_date', { ascending: true });
+  const eventIds = (events || []).map(e => e.id);
+  const { data: registrations } = eventIds.length > 0
+    ? await db.from('registrations').select('id, checked_in, first_name, last_name, email, event_id, registered_at').in('event_id', eventIds).order('registered_at', { ascending: false })
+    : { data: [] };
 
   const totalEvents = events?.length || 0;
   const totalRegs = registrations?.length || 0;
@@ -995,6 +1163,9 @@ async function loadDashboard() {
   document.getElementById('stat-events').textContent = totalEvents;
   document.getElementById('stat-registrations').textContent = totalRegs;
   document.getElementById('stat-checkins').textContent = totalCheckins;
+  // Hide check-in stat card for Edumove (no check-in concept)
+  const checkinStatCard = document.getElementById('stat-checkins')?.closest('.bg-white');
+  if (checkinStatCard) checkinStatCard.style.display = brand === 'edumove' ? 'none' : '';
 
   // Rates per event
   const ratesContainer = document.getElementById('dashboard-rates');
@@ -1059,7 +1230,8 @@ const EVENTS_PER_PAGE = 15;
 let eventsPage = 0;
 
 async function loadEvents() {
-  const { data: events } = await db.from('events').select('*').order('event_date', { ascending: false });
+  const brand = currentBrand || 'diploma';
+  const { data: events } = await db.from('events').select('*').eq('brand', brand).order('event_date', { ascending: false });
   allEventsCache = events || [];
   eventsPage = 0;
   filterEventsList();
@@ -1366,7 +1538,8 @@ function resetEventForm() {
   customSmsData = null;
   customEmailsData = null;
   document.getElementById('form-search').value = '';
-  loadHubspotForms();
+  if (currentBrand !== 'edumove') loadHubspotForms();
+  updateNavForBrand();
 }
 
 async function loadHubspotForms() {
@@ -1417,37 +1590,51 @@ function updateSelectedCount() {
 }
 
 async function saveEvent() {
+  const isEdumove = currentBrand === 'edumove';
   const name = document.getElementById('evt-name').value.trim();
-  const article = document.getElementById('evt-article').value;
+  const article = isEdumove ? 'le' : document.getElementById('evt-article').value;
   const description = document.getElementById('evt-description').value.trim();
-  const brief = document.getElementById('evt-brief').value.trim();
+  const brief = isEdumove ? null : document.getElementById('evt-brief').value.trim();
   const evtDate = document.getElementById('evt-date').value;
   const evtTimeStart = document.getElementById('evt-time-start').value;
   const evtTimeEnd = document.getElementById('evt-time-end').value;
-  const location = document.getElementById('evt-location').value;
+  const location = isEdumove ? 'visio' : document.getElementById('evt-location').value;
   const capacity = document.getElementById('evt-capacity').value;
   const status = document.getElementById('evt-status').value;
-  const hubspotProp = document.getElementById('evt-hubspot-prop').value.trim();
-  const smsFactorEnabled = document.getElementById('evt-sms-factor').checked;
-  const smsSender = document.getElementById('evt-sms-sender').value.trim() || 'DIPLOMA';
-  const smsPushType = parseInt(document.getElementById('evt-sms-push-type').value);
-  const smsStop = document.getElementById('evt-sms-stop').checked;
+  const hubspotProp = isEdumove ? '' : document.getElementById('evt-hubspot-prop').value.trim();
+  const smsFactorEnabled = isEdumove ? false : document.getElementById('evt-sms-factor').checked;
+  const smsSender = isEdumove ? 'EDUMOVE' : (document.getElementById('evt-sms-sender').value.trim() || 'DIPLOMA');
+  const smsPushType = isEdumove ? 1 : parseInt(document.getElementById('evt-sms-push-type').value);
+  const smsStop = isEdumove ? false : document.getElementById('evt-sms-stop').checked;
 
-  const isVisio = location === 'visio';
-  const visioLink = isVisio ? document.getElementById('evt-visio-link').value.trim() : null;
+  const isVisio = location === 'visio' || isEdumove;
+  const visioLink = isEdumove
+    ? (document.getElementById('evt-visio-link').value.trim() || BRAND_CONFIG.edumove.defaultZoom)
+    : (isVisio ? document.getElementById('evt-visio-link').value.trim() : null);
   const locationLabel = isVisio ? 'Visioconference' : location;
 
-  if (!name || !evtDate || !evtTimeStart || !location) {
-    showToast('Nom, date, heure et lieu sont obligatoires', 'error');
-    return;
-  }
-  if (!evtTimeEnd) {
-    showToast('Heure de fin obligatoire', 'error');
-    return;
-  }
-  if (isVisio && !visioLink) {
-    showToast('Le lien de visioconference est obligatoire', 'error');
-    return;
+  if (isEdumove) {
+    if (!name || !evtDate || !evtTimeStart) {
+      showToast('Nom, date et heure sont obligatoires', 'error');
+      return;
+    }
+    if (!evtTimeEnd) {
+      showToast('Heure de fin obligatoire', 'error');
+      return;
+    }
+  } else {
+    if (!name || !evtDate || !evtTimeStart || !location) {
+      showToast('Nom, date, heure et lieu sont obligatoires', 'error');
+      return;
+    }
+    if (!evtTimeEnd) {
+      showToast('Heure de fin obligatoire', 'error');
+      return;
+    }
+    if (isVisio && !visioLink) {
+      showToast('Le lien de visioconference est obligatoire', 'error');
+      return;
+    }
   }
 
   // Add timezone offset so 14:00 Paris = 14:00 stored (not interpreted as UTC)
@@ -1484,7 +1671,8 @@ async function saveEvent() {
       sms_stop: smsStop,
       zoom_join_url: visioLink,
       custom_sms: customSmsData || null,
-      custom_emails: customEmailsData || null
+      custom_emails: customEmailsData || null,
+      brand: currentBrand || 'diploma'
     }).select().single();
 
     if (error) {
@@ -1503,8 +1691,8 @@ async function saveEvent() {
       await db.from('event_forms').insert(forms);
     }
 
-    // Create HubSpot workflow + properties automatically
-    if (hubspotProp) {
+    // Create HubSpot workflow + properties automatically (Diploma only)
+    if (hubspotProp && !isEdumove) {
       saveBtn.textContent = 'Configuration HubSpot...';
       try {
         const wfRes = await fetch(SUPABASE_URL + '/functions/v1/create-workflow', {
@@ -1586,6 +1774,16 @@ async function loadEventDetail(id) {
   document.getElementById('preview-content').classList.add('hidden');
   document.getElementById('preview-chevron').style.transform = '';
 
+  // Brand-specific UI adjustments
+  const isEdumoveEvent = event.brand === 'edumove';
+  // Hide scanner button for Edumove
+  document.querySelector('[onclick="openScanner()"]').style.display = isEdumoveEvent ? 'none' : '';
+  // Hide HubSpot property row for Edumove
+  document.getElementById('detail-hubspot-prop').closest('div').style.display = isEdumoveEvent ? 'none' : '';
+  // Hide HubSpot forms section for Edumove
+  const formsSection = document.getElementById('detail-forms')?.closest('.bg-white');
+  if (formsSection) formsSection.style.display = isEdumoveEvent ? 'none' : '';
+
   const statusEl = document.getElementById('detail-status');
   statusEl.innerHTML = `<span class="text-xs px-3 py-1 rounded-full ${statusClass(event.status)}">${statusLabel(event.status)}</span>`;
 
@@ -1632,10 +1830,24 @@ async function loadEventDetail(id) {
   document.getElementById('detail-stat-absent').textContent = absent;
   document.getElementById('detail-stat-rate').textContent = rate + '%';
 
+  // Hide check-in related stats for Edumove events
+  const isEdumoveDetail = event.brand === 'edumove';
+  document.getElementById('detail-stat-checkedin').closest('.bg-white').style.display = isEdumoveDetail ? 'none' : '';
+  document.getElementById('detail-stat-absent').closest('.bg-white').style.display = isEdumoveDetail ? 'none' : '';
+  document.getElementById('detail-stat-rate').closest('.bg-white').style.display = isEdumoveDetail ? 'none' : '';
+
   const tbody = document.getElementById('detail-registrations');
   if (regs.length === 0) {
     tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Aucune inscription pour le moment</td></tr>';
     return;
+  }
+
+  const hideCheckin = event.brand === 'edumove';
+  // Hide check-in table headers for Edumove
+  const thRows = document.querySelectorAll('#page-event-detail thead th');
+  if (thRows.length >= 5) {
+    thRows[3].style.display = hideCheckin ? 'none' : ''; // Statut
+    thRows[4].style.display = hideCheckin ? 'none' : ''; // Check-in
   }
 
   tbody.innerHTML = regs.map(r => `
@@ -1643,13 +1855,13 @@ async function loadEventDetail(id) {
       <td class="px-6 py-4 text-sm font-medium text-gray-900">${esc(r.first_name || '')} ${esc(r.last_name || '')}</td>
       <td class="px-6 py-4 text-sm text-gray-500">${esc(r.email)}</td>
       <td class="px-6 py-4 text-sm text-gray-500">${esc(r.company || '-')}</td>
-      <td class="px-6 py-4">
+      <td class="px-6 py-4" ${hideCheckin ? 'style="display:none"' : ''}>
         ${r.checked_in
           ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Present</span>'
           : '<span class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full"><span class="w-1.5 h-1.5 bg-gray-400 rounded-full"></span>En attente</span>'
         }
       </td>
-      <td class="px-6 py-4 text-sm text-gray-500">${r.checked_in_at ? formatDateTime(r.checked_in_at) : '-'}</td>
+      <td class="px-6 py-4 text-sm text-gray-500" ${hideCheckin ? 'style="display:none"' : ''}>${r.checked_in_at ? formatDateTime(r.checked_in_at) : '-'}</td>
     </tr>
   `).join('');
 }
@@ -1787,7 +1999,8 @@ async function duplicateEvent() {
     sms_stop: ev.sms_stop,
     zoom_join_url: ev.zoom_join_url,
     custom_sms: ev.custom_sms,
-    custom_emails: ev.custom_emails
+    custom_emails: ev.custom_emails,
+    brand: ev.brand || 'diploma'
   }).select().single();
   if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
   // Duplicate linked forms
@@ -2034,6 +2247,30 @@ function pvSmsBody(ev, type) {
 }
 
 function renderPreviews(ev) {
+  // Update sender badge based on brand
+  const senderBadge = document.getElementById('email-sender-badge');
+  if (senderBadge) {
+    const config = BRAND_CONFIG[ev.brand || 'diploma'];
+    senderBadge.textContent = 'Exp : ' + config.sender;
+    if (ev.brand === 'edumove') {
+      senderBadge.className = 'text-xs px-2 py-1 rounded-full font-medium';
+      senderBadge.style.background = '#EC680A20';
+      senderBadge.style.color = '#EC680A';
+    } else {
+      senderBadge.className = 'text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 font-medium';
+      senderBadge.style.background = '';
+      senderBadge.style.color = '';
+    }
+  }
+
+  // Restore SMS section visibility (in case switching from Edumove to Diploma)
+  const smsSectionRestore = document.getElementById('sms-preview-list')?.closest('.bg-gray-50.rounded-2xl');
+  if (smsSectionRestore) smsSectionRestore.style.display = '';
+
+  if (ev.brand === 'edumove') {
+    renderEdumovePreviews(ev);
+    return;
+  }
   const vis = !!ev.zoom_join_url;
   const emailTypes = vis
     ? [{id:'confirmation',lb:'Confirmation'},{id:'j-3',lb:'J-3'},{id:'j-1',lb:'J-1'},{id:'j-0-matin',lb:'Jour J'}]
@@ -2073,9 +2310,10 @@ function showEmailTab(type) {
     t.className = `email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${t.dataset.tab===type?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`;
   });
   const ev = previewEvent, tv = emailTabValues[type];
+  const isEdumoveEv = ev && ev.brand === 'edumove';
   const s = document.getElementById('email-subject'), b = document.getElementById('email-body');
-  if (s) s.value = tv?.subject || pvEmailSubject(ev, type);
-  if (b) b.value = tv?.body || pvEmailBody(ev, type);
+  if (s) s.value = tv?.subject || (isEdumoveEv ? pvEdumoveSubject(ev, type) : pvEmailSubject(ev, type));
+  if (b) b.value = tv?.body || (isEdumoveEv ? pvEdumoveBody(ev, type) : pvEmailBody(ev, type));
   refreshEmailPreview();
 }
 function debounceRefresh() { clearTimeout(_refreshTimer); _refreshTimer = setTimeout(refreshEmailPreview, 400); }
@@ -2085,7 +2323,12 @@ function onEmailFieldChange() {
 }
 function refreshEmailPreview() {
   const type = currentEmailTab, body = document.getElementById('email-body')?.value||'';
-  const html = type === 'confirmation' ? pvConfEmail(previewEvent, body) : pvEmail(previewEvent, type, body);
+  let html;
+  if (previewEvent && previewEvent.brand === 'edumove') {
+    html = type === 'confirmation' ? pvEdumoveConfEmail(previewEvent, body) : pvEdumoveEmail(previewEvent, type, body);
+  } else {
+    html = type === 'confirmation' ? pvConfEmail(previewEvent, body) : pvEmail(previewEvent, type, body);
+  }
   const iframe = document.getElementById('email-iframe');
   const doc = iframe.contentDocument || iframe.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
@@ -2123,6 +2366,87 @@ function pvQrBlk() {
 }
 function pvAccess(ev) { return ev.zoom_join_url ? pvVisioBtn(ev.zoom_join_url) : pvQrBlk(); }
 
+// ============================================================
+// EDUMOVE EMAIL TEMPLATES (preview)
+// ============================================================
+function renderEdumovePreviews(ev) {
+  const emailTypes = [
+    {id:'confirmation', lb:'Confirmation'},
+    {id:'j-7', lb:'Rappel J-7'},
+    {id:'j-1', lb:'Rappel J-1'},
+    {id:'j-0-10h', lb:'Jour J 10h'},
+    {id:'j-0-18h25', lb:'J-0 18h25'},
+  ];
+  window._emailTypes = emailTypes;
+  window._smsTypes = []; // No SMS for Edumove
+
+  emailTabValues = {};
+  const ce = ev.custom_emails || {};
+  Object.keys(ce).forEach(t => { if(ce[t]) emailTabValues[t] = {subject:ce[t].subject||'', body:ce[t].body||''}; });
+
+  document.getElementById('email-tabs').innerHTML = emailTypes.map((t,i) =>
+    `<button onclick="showEmailTab('${t.id}')" class="email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${i===0?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-tab="${t.id}">${t.lb}</button>`
+  ).join('');
+
+  // Hide SMS section
+  const smsSectionEl = document.getElementById('sms-preview-list')?.closest('.bg-gray-50.rounded-2xl');
+  if (smsSectionEl) smsSectionEl.style.display = 'none';
+
+  currentEmailTab = null;
+  showEmailTab(emailTypes[0].id);
+}
+
+function pvEdumoveSubject(ev, type) {
+  const n = ev.name;
+  return ({'confirmation':`Inscription confirm\u00e9e \u2014 ${n}`,'j-7':`J-7 \u2014 ${n} approche !`,'j-1':`C'est demain \u2014 ${n}`,'j-0-10h':`C'est aujourd'hui \u2014 ${n} !`,'j-0-18h25':`\u00c7a commence dans 5 minutes \u2014 ${n} !`})[type] || `Rappel \u2014 ${n}`;
+}
+
+function pvEdumoveBody(ev, type) {
+  const n = ev.name;
+  return ({'confirmation':`Merci pour votre inscription au webinaire ${n} ! Nous avons h\u00e2te de vous y retrouver. Votre lien de connexion Zoom se trouve ci-dessous.`,'j-7':`Bonjour {prenom}, le webinaire ${n} a lieu dans une semaine. Bloquez la date dans votre agenda !`,'j-1':`Bonjour {prenom}, c'est demain ! Le webinaire ${n} vous attend. Pr\u00e9parez vos questions !`,'j-0-10h':`Bonjour {prenom}, c'est aujourd'hui ! Retrouvez-nous pour le webinaire ${n}. Votre lien Zoom est ci-dessous.`,'j-0-18h25':`{prenom}, le webinaire ${n} commence dans 5 minutes ! Cliquez sur le lien Zoom ci-dessous pour nous rejoindre.`})[type] || `Rappel : le webinaire ${n} approche !`;
+}
+
+function pvEdumoveZoomBtn(url) {
+  return `<div style="background:linear-gradient(135deg,#EC680A,#D45A00);border-radius:12px;padding:24px;margin:28px 0;text-align:center;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.9);margin:0 0 12px;font-weight:700;">Rejoindre le webinaire</p><a href="${url}" style="display:inline-block;background:#FFF;color:#EC680A!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Rejoindre \u2192</a><p style="font-size:12px;color:rgba(255,255,255,0.6);margin:12px 0 0;word-break:break-all;">${url}</p></div>`;
+}
+
+function pvEdumoveDetailTbl(ev) {
+  const d = new Date(ev.event_date);
+  const ds = ucfirst(d.toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'}));
+  return `<h2 style="font-family:'Inter',Arial,sans-serif;font-size:20px;color:#1B1D3A;margin:0 0 20px;padding-bottom:14px;border-bottom:2px solid #EC680A30;font-weight:700;">D\u00e9tails du webinaire</h2><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;"><tr><td style="padding:8px 16px 8px 0;vertical-align:top;width:50%;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Webinaire</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">${ev.name}</p></td><td style="padding:8px 0 8px 16px;vertical-align:top;width:50%;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Date</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">${ds}<br>${pvTR(ev)}</p></td></tr><tr><td style="padding:8px 16px 8px 0;vertical-align:top;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Format</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">En ligne (Zoom)</p></td><td style="padding:8px 0 8px 16px;vertical-align:top;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#615CA5;margin:0 0 4px;font-weight:700;">Participant</p><p style="font-size:16px;color:#1B1D3A;margin:0;font-weight:700;">Jean Dupont</p></td></tr></table>`;
+}
+
+function pvEdumoveWrap(heroT, heroS, body) {
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F5F7;font-family:'Inter',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F7;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;"><img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" width="200" style="display:block;margin:0 auto;width:200px;"></div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:#1B1D3A;padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'Inter',Arial,sans-serif;font-size:26px;line-height:1.2;color:#FFF;margin:0 0 16px;font-weight:700;">${heroT}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroS}</p><div style="width:48px;height:3px;background:#EC680A;margin:28px auto 0;border-radius:2px;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}</div></td></tr><tr><td><div style="background:#1B1D3A;padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'Inter',Arial,sans-serif;font-size:20px;color:#FFF;margin:0 0 12px;font-weight:700;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">L'\u00e9quipe Edumove a h\u00e2te de vous retrouver.</p><a href="mailto:admissions@edumove.fr" style="display:inline-block;background:#EC680A;color:#FFF!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Edumove</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} Edumove</p></td></tr></table></body></html>`;
+}
+
+function pvEdumoveConfEmail(ev, customBody) {
+  const zoomBtn = pvEdumoveZoomBtn(ev.zoom_join_url || BRAND_CONFIG.edumove.defaultZoom);
+  const heroSub = (customBody||'').trim() ? esc(customBody).replace(/\{prenom\}/g,'<strong style="color:#EC680A;">Jean</strong>') : `Merci pour votre inscription ! Votre lien de connexion Zoom se trouve ci-dessous.`;
+  return pvEdumoveWrap('<span style="color:#EC680A;">Votre inscription</span><br>est confirm\u00e9e !', heroSub,
+    `${pvEdumoveDetailTbl(ev)}${zoomBtn}<div style="background:#615CA520;border-left:4px solid #615CA5;border-radius:0 12px 12px 0;padding:20px 24px;"><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;font-style:italic;">Gardez le <strong style="color:#1B1D3A;">lien Zoom</strong> ci-dessus \u00e0 port\u00e9e de main pour le jour J.</p></div>`);
+}
+
+function pvEdumoveEmail(ev, type, customBody) {
+  const zoomBtn = pvEdumoveZoomBtn(ev.zoom_join_url || BRAND_CONFIG.edumove.defaultZoom);
+  const fn = 'Jean';
+  const body = (customBody||'').trim() ? customBody : pvEdumoveBody(ev, type);
+  const p = `<p style="font-size:16px;line-height:1.7;color:#3D4B5C;margin:0 0 24px;">${esc(body).replace(/\{prenom\}/g,'<strong style="color:#1B1D3A;">'+fn+'</strong>')}</p>`;
+  const showZoom = type === 'j-0-10h' || type === 'j-0-18h25';
+  const heroes = {
+    'j-7':[`Plus que <span style="color:#EC680A;">7 jours</span><br>avant le webinaire !`,`Bloquez la date dans votre agenda !`],
+    'j-1':[`C'est <span style="color:#EC680A;">demain</span> !`,`Pr\u00e9parez vos questions pour le webinaire !`],
+    'j-0-10h':[`C'est <span style="color:#EC680A;">aujourd'hui</span> !`,`Le webinaire va bient\u00f4t commencer !`],
+    'j-0-18h25':[`\u00c7a commence dans <span style="color:#EC680A;">5 minutes</span> !`,`Connectez-vous vite !`]
+  };
+  const [heroT, heroS] = heroes[type] || [`Rappel \u2014 ${ev.name}`,`Un rappel !`];
+  const details = type === 'j-7' ? pvEdumoveDetailTbl(ev) : '';
+  return pvEdumoveWrap(heroT, heroS, `${p}${details}${showZoom ? zoomBtn : ''}`);
+}
+
+// ============================================================
+// DIPLOMA EMAIL TEMPLATES (existing)
+// ============================================================
 function pvWrap(heroT, heroS, body, access) {
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F2EC;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;"><img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" width="260" style="display:block;margin:0 auto;width:260px;"></div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:#1C2436;padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;line-height:1.2;color:#FFF;margin:0 0 16px;">${heroT}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroS}</p><div style="width:48px;height:2px;background:linear-gradient(90deg,#C2AB82,transparent);margin:28px auto 0;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}${access}</div></td></tr><tr><td><div style="background:#1C2436;padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#FFF;margin:0 0 12px;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">Nous avons h\u00e2te de vous retrouver. N'h\u00e9sitez pas \u00e0 nous contacter !</p><a href="mailto:admissions@diploma-sante.fr" style="display:inline-block;background:#C2AB82;color:#1C2436!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Diploma Sant\u00e9</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} Diploma Sant\u00e9</p></td></tr></table></body></html>`;
 }
