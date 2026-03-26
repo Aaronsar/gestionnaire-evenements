@@ -366,11 +366,23 @@
             <!-- Time fields: range for physical, single for visio -->
             <div id="time-range-fields">
               <label class="block text-sm font-medium text-gray-700 mb-2">Heure de debut *</label>
-              <input type="time" id="evt-time-start" value="14:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+              <input type="time" id="evt-time-start" value="14:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" onchange="if(currentBrand==='edumove')updateEndTimeFromDuration()">
             </div>
             <div id="time-end-field">
               <label class="block text-sm font-medium text-gray-700 mb-2">Heure de fin *</label>
               <input type="time" id="evt-time-end" value="18:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+            </div>
+            <div id="duration-field" style="display:none;">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Duree du webinaire *</label>
+              <select id="evt-duration" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white" onchange="updateEndTimeFromDuration()">
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60" selected>1 heure</option>
+                <option value="90">1h30</option>
+                <option value="120">2 heures</option>
+                <option value="150">2h30</option>
+                <option value="180">3 heures</option>
+              </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Capacite max</label>
@@ -884,7 +896,7 @@ function updateNavForBrand() {
   if (hubspotFormsSection && hubspotFormsSection.querySelector('[onclick="refreshHubspotForms()"]')) {
     hubspotFormsSection.style.display = isEdumove ? 'none' : '';
   }
-  // For Edumove: show visio link field always, pre-fill default zoom
+  // For Edumove: show visio link field always, pre-fill default zoom, show duration instead of end time
   if (isEdumove) {
     document.getElementById('visio-link-container').classList.remove('hidden');
     const visioInput = document.getElementById('evt-visio-link');
@@ -892,8 +904,13 @@ function updateNavForBrand() {
     // Update labels for Edumove
     const timeLabel = document.querySelector('#time-range-fields label');
     if (timeLabel) timeLabel.textContent = 'Heure de debut du webinaire *';
-    const timeEndLabel = document.querySelector('#time-end-field label');
-    if (timeEndLabel) timeEndLabel.textContent = 'Heure de fin du webinaire *';
+    // Show duration field, hide end time field
+    document.getElementById('time-end-field').style.display = 'none';
+    document.getElementById('duration-field').style.display = '';
+    // Set default start time to 18:30 for Edumove
+    const startInput = document.getElementById('evt-time-start');
+    if (startInput && startInput.value === '14:00') startInput.value = '18:30';
+    updateEndTimeFromDuration();
     // Update form title
     const formTitle = document.querySelector('#page-event-new h1');
     if (formTitle) formTitle.textContent = 'Nouveau webinaire';
@@ -905,9 +922,21 @@ function updateNavForBrand() {
     if (formTitle) formTitle.textContent = 'Nouvel evenement';
     const timeLabel = document.querySelector('#time-range-fields label');
     if (timeLabel) timeLabel.textContent = 'Heure de debut *';
-    const timeEndLabel = document.querySelector('#time-end-field label');
-    if (timeEndLabel) timeEndLabel.textContent = 'Heure de fin *';
+    // Show end time field, hide duration field
+    document.getElementById('time-end-field').style.display = '';
+    document.getElementById('duration-field').style.display = 'none';
   }
+}
+
+function updateEndTimeFromDuration() {
+  const startVal = document.getElementById('evt-time-start').value;
+  const duration = parseInt(document.getElementById('evt-duration').value) || 60;
+  if (!startVal) return;
+  const [h, m] = startVal.split(':').map(Number);
+  const totalMin = h * 60 + m + duration;
+  const endH = Math.floor(totalMin / 60) % 24;
+  const endM = totalMin % 60;
+  document.getElementById('evt-time-end').value = String(endH).padStart(2, '0') + ':' + String(endM).padStart(2, '0');
 }
 
 // ============================================================
