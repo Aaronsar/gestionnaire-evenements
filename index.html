@@ -892,10 +892,9 @@ function updateNavForBrand() {
   const aiSection = document.querySelector('#page-event-new .mt-8.border-t.border-gray-200.pt-6');
   if (aiSection) aiSection.style.display = isEdumove ? 'none' : '';
   // HubSpot forms section
+  // HubSpot forms section - keep visible for Edumove (used for registration intake)
   const hubspotFormsSection = aiSection ? aiSection.nextElementSibling : null;
-  if (hubspotFormsSection && hubspotFormsSection.querySelector('[onclick="refreshHubspotForms()"]')) {
-    hubspotFormsSection.style.display = isEdumove ? 'none' : '';
-  }
+  if (hubspotFormsSection) hubspotFormsSection.style.display = '';
   // For Edumove: show visio link field always, pre-fill default zoom, show duration instead of end time
   if (isEdumove) {
     document.getElementById('visio-link-container').classList.remove('hidden');
@@ -1571,7 +1570,7 @@ function resetEventForm() {
   customSmsData = null;
   customEmailsData = null;
   document.getElementById('form-search').value = '';
-  if (currentBrand !== 'edumove') loadHubspotForms();
+  loadHubspotForms();
   updateNavForBrand();
 }
 
@@ -1813,9 +1812,9 @@ async function loadEventDetail(id) {
   document.querySelector('[onclick="openScanner()"]').style.display = isEdumoveEvent ? 'none' : '';
   // Hide HubSpot property row for Edumove
   document.getElementById('detail-hubspot-prop').closest('div').style.display = isEdumoveEvent ? 'none' : '';
-  // Hide HubSpot forms section for Edumove
+  // Show HubSpot forms section for both brands (Edumove uses forms for registration intake too)
   const formsSection = document.getElementById('detail-forms')?.closest('.bg-white');
-  if (formsSection) formsSection.style.display = isEdumoveEvent ? 'none' : '';
+  if (formsSection) formsSection.style.display = '';
 
   const statusEl = document.getElementById('detail-status');
   statusEl.innerHTML = `<span class="text-xs px-3 py-1 rounded-full ${statusClass(event.status)}">${statusLabel(event.status)}</span>`;
