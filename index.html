@@ -495,6 +495,18 @@
               <p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires HubSpot...</p>
             </div>
             <div id="selected-forms-count" class="text-xs text-gray-500 mt-2">0 formulaire(s) selectionne(s)</div>
+
+            <!-- Manual Meta form input -->
+            <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <p class="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Ajouter un formulaire Meta Lead Ads manuellement</p>
+              <p class="text-xs text-blue-600 mb-2">Pour les formulaires Meta pas encore dans la liste (0 soumissions)</p>
+              <div class="flex gap-2">
+                <input type="text" id="manual-meta-form" placeholder="Ex: EDUMOVE - Webinaire Financement..."
+                  class="flex-1 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                <button onclick="addManualMetaForm()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">Ajouter</button>
+              </div>
+              <div id="manual-meta-forms-list" class="mt-2 space-y-1"></div>
+            </div>
           </div>
 
           <div class="mt-8 flex gap-3">
@@ -1575,6 +1587,8 @@ function resetEventForm() {
   customSmsData = null;
   customEmailsData = null;
   document.getElementById('form-search').value = '';
+  manualMetaForms.length = 0;
+  document.getElementById('manual-meta-forms-list').innerHTML = '';
   loadHubspotForms();
   updateNavForBrand();
 }
@@ -1610,20 +1624,64 @@ function renderFormCheckboxes(forms) {
     container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Aucun formulaire trouve</p>';
     return;
   }
-  container.innerHTML = forms.map(f => `
+  const metaForms = forms.filter(f => f.formType === 'meta');
+  const hubspotForms = forms.filter(f => f.formType !== 'meta');
+  let html = '';
+  if (metaForms.length > 0) {
+    html += '<p class="text-xs font-semibold text-blue-600 uppercase tracking-wider px-2 pt-2 pb-1">Meta Lead Ads</p>';
+    html += metaForms.map(f => `
+      <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 cursor-pointer border-l-2 border-blue-400">
+        <input type="checkbox" class="form-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          value="${esc(f.id)}" data-name="${esc(f.name)}" data-form-type="meta" onchange="updateSelectedCount()">
+        <span class="text-sm text-gray-700 flex-1">${esc(f.name)}</span>
+        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Meta</span>
+      </label>
+    `).join('');
+    html += '<hr class="my-2 border-gray-200">';
+    html += '<p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 pt-1 pb-1">HubSpot</p>';
+  }
+  html += hubspotForms.map(f => `
     <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
       <input type="checkbox" class="form-checkbox w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-        value="${esc(f.id)}" data-name="${esc(f.name)}" onchange="updateSelectedCount()">
+        value="${esc(f.id)}" data-name="${esc(f.name)}" data-form-type="hubspot" onchange="updateSelectedCount()">
       <span class="text-sm text-gray-700 flex-1">${esc(f.name)}</span>
       <span class="text-xs text-gray-400">${f.createdAt ? f.createdAt.slice(0,10) : ''}</span>
     </label>
   `).join('');
+  container.innerHTML = html;
   updateSelectedCount();
 }
 
 function updateSelectedCount() {
   const checked = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
-  document.getElementById('selected-forms-count').textContent = `${checked.length} formulaire(s) selectionne(s)`;
+  const manualMeta = document.querySelectorAll('#manual-meta-forms-list .manual-meta-entry');
+  const total = checked.length + manualMeta.length;
+  document.getElementById('selected-forms-count').textContent = `${total} formulaire(s) selectionne(s)`;
+}
+
+const manualMetaForms = [];
+function addManualMetaForm() {
+  const input = document.getElementById('manual-meta-form');
+  const name = input.value.trim();
+  if (!name) return;
+  if (manualMetaForms.includes(name)) { showToast('Formulaire deja ajoute', 'error'); return; }
+  manualMetaForms.push(name);
+  input.value = '';
+  const list = document.getElementById('manual-meta-forms-list');
+  const idx = manualMetaForms.length - 1;
+  list.innerHTML += `<div class="manual-meta-entry flex items-center gap-2 p-2 bg-white rounded-lg border border-blue-200" data-name="${esc(name)}">
+    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Meta</span>
+    <span class="text-sm text-gray-700 flex-1">${esc(name)}</span>
+    <button onclick="removeManualMetaForm(this, '${esc(name)}')" class="text-red-400 hover:text-red-600 text-xs">Supprimer</button>
+  </div>`;
+  updateSelectedCount();
+}
+
+function removeManualMetaForm(btn, name) {
+  const idx = manualMetaForms.indexOf(name);
+  if (idx > -1) manualMetaForms.splice(idx, 1);
+  btn.closest('.manual-meta-entry').remove();
+  updateSelectedCount();
 }
 
 async function saveEvent() {
@@ -1717,11 +1775,15 @@ async function saveEvent() {
       return;
     }
 
-    // Insert forms from checkboxes
+    // Insert forms from checkboxes + manual Meta forms
     const checkedBoxes = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
     const forms = [];
     checkedBoxes.forEach(cb => {
-      forms.push({ event_id: event.id, hubspot_form_id: cb.value, form_name: cb.dataset.name || null });
+      forms.push({ event_id: event.id, hubspot_form_id: cb.value, form_name: cb.dataset.name || null, form_type: cb.dataset.formType || 'hubspot' });
+    });
+    // Add manual Meta forms
+    manualMetaForms.forEach(name => {
+      forms.push({ event_id: event.id, hubspot_form_id: `meta:${name}`, form_name: name, form_type: 'meta' });
     });
 
     if (forms.length > 0) {
@@ -1845,7 +1907,9 @@ async function loadEventDetail(id) {
   if (forms && forms.length > 0) {
     formsContainer.innerHTML = forms.map(f => `
       <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-        <span class="text-xs font-mono bg-gray-200 px-2 py-1 rounded">${esc(f.hubspot_form_id)}</span>
+        ${f.form_type === 'meta'
+          ? '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Meta</span>'
+          : '<span class="text-xs font-mono bg-gray-200 px-2 py-1 rounded">' + esc(f.hubspot_form_id) + '</span>'}
         <span class="text-sm text-gray-700">${esc(f.form_name || 'Sans nom')}</span>
       </div>
     `).join('');
@@ -2043,7 +2107,7 @@ async function duplicateEvent() {
   // Duplicate linked forms
   const { data: forms } = await db.from('event_forms').select('*').eq('event_id', currentEventId);
   if (forms && forms.length > 0) {
-    await db.from('event_forms').insert(forms.map(f => ({ event_id: newEvent.id, hubspot_form_id: f.hubspot_form_id, form_name: f.form_name })));
+    await db.from('event_forms').insert(forms.map(f => ({ event_id: newEvent.id, hubspot_form_id: f.hubspot_form_id, form_name: f.form_name, form_type: f.form_type || 'hubspot' })));
   }
   showToast('Evenement duplique en brouillon !');
   navigate('event/' + newEvent.id);
