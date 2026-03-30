@@ -686,7 +686,7 @@
                 <tr>
                   <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Nom</th>
                   <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
-                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Entreprise</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Telephone</th>
                   <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Statut</th>
                   <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Check-in</th>
                 </tr>
@@ -1955,7 +1955,7 @@ async function loadEventDetail(id) {
     <tr class="hover:bg-gray-50">
       <td class="px-6 py-4 text-sm font-medium text-gray-900">${esc(r.first_name || '')} ${esc(r.last_name || '')}</td>
       <td class="px-6 py-4 text-sm text-gray-500">${esc(r.email)}</td>
-      <td class="px-6 py-4 text-sm text-gray-500">${esc(r.company || '-')}</td>
+      <td class="px-6 py-4 text-sm text-gray-500">${esc(r.phone || '-')}</td>
       <td class="px-6 py-4" ${hideCheckin ? 'style="display:none"' : ''}>
         ${r.checked_in
           ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full"><span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>Present</span>'
