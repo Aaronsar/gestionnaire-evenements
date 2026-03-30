@@ -1944,14 +1944,25 @@ async function loadEventDetail(id) {
   }
 
   const hideCheckin = event.brand === 'edumove';
-  // Hide check-in table headers for Edumove
   const thRows = document.querySelectorAll('#page-event-detail thead th');
   if (thRows.length >= 5) {
-    thRows[3].style.display = hideCheckin ? 'none' : ''; // Statut
-    thRows[4].style.display = hideCheckin ? 'none' : ''; // Check-in
+    thRows[3].style.display = hideCheckin ? 'none' : '';
+    thRows[4].style.display = hideCheckin ? 'none' : '';
   }
 
-  tbody.innerHTML = regs.map(r => `
+  // Pagination
+  const PAGE_SIZE = 10;
+  window._regPageData = { regs, hideCheckin, page: 1, totalPages: Math.ceil(regs.length / PAGE_SIZE), pageSize: PAGE_SIZE };
+  renderRegPage();
+}
+
+function renderRegPage() {
+  const { regs, hideCheckin, page, totalPages, pageSize } = window._regPageData;
+  const tbody = document.getElementById('detail-registrations');
+  const start = (page - 1) * pageSize;
+  const pageRegs = regs.slice(start, start + pageSize);
+
+  tbody.innerHTML = pageRegs.map(r => `
     <tr class="hover:bg-gray-50">
       <td class="px-6 py-4 text-sm font-medium text-gray-900">${esc(r.first_name || '')} ${esc(r.last_name || '')}</td>
       <td class="px-6 py-4 text-sm text-gray-500">${esc(r.email)}</td>
@@ -1965,6 +1976,31 @@ async function loadEventDetail(id) {
       <td class="px-6 py-4 text-sm text-gray-500" ${hideCheckin ? 'style="display:none"' : ''}>${r.checked_in_at ? formatDateTime(r.checked_in_at) : '-'}</td>
     </tr>
   `).join('');
+
+  // Pagination controls
+  let paginationEl = document.getElementById('reg-pagination');
+  if (!paginationEl) {
+    paginationEl = document.createElement('div');
+    paginationEl.id = 'reg-pagination';
+    tbody.closest('table').parentElement.appendChild(paginationEl);
+  }
+  if (totalPages <= 1) { paginationEl.innerHTML = ''; return; }
+
+  let buttons = '';
+  for (let i = 1; i <= totalPages; i++) {
+    const active = i === page;
+    buttons += `<button onclick="goRegPage(${i})" class="px-3 py-1.5 text-sm rounded-lg transition ${active ? 'bg-primary-600 text-white font-semibold' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}">${i}</button>`;
+  }
+  paginationEl.innerHTML = `<div class="flex items-center justify-between px-6 py-3 border-t border-gray-100">
+    <span class="text-xs text-gray-500">${start + 1}-${Math.min(start + pageSize, regs.length)} sur ${regs.length}</span>
+    <div class="flex gap-1">${buttons}</div>
+  </div>`;
+}
+
+function goRegPage(p) {
+  window._regPageData.page = p;
+  renderRegPage();
+  document.getElementById('detail-registrations').closest('table').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function deleteEvent() {
