@@ -2000,16 +2000,36 @@ async function publishEvent() {
           body: JSON.stringify({ workflow_id: wfId, enable: true })
         });
         const data = await res.json();
-        if (data.success) {
-          showToast('Evenement publie + workflow HubSpot active !');
-        } else {
-          showToast('Evenement publie mais workflow non active: ' + (data.error || ''), 'warning');
+        if (!data.success) {
+          showToast('Workflow non active: ' + (data.error || ''), 'warning');
         }
       } catch (e) {
         console.error('Workflow activation error:', e);
-        showToast('Evenement publie mais erreur activation workflow', 'warning');
+        showToast('Erreur activation workflow', 'warning');
       }
-    } else {
+    }
+
+    // Send pending confirmations (email + SMS) to registrations that haven't received them yet
+    btn.textContent = 'Envoi des confirmations...';
+    try {
+      const confRes = await fetch(SUPABASE_URL + '/functions/v1/send-pending-confirmations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: currentEventId })
+      });
+      const confData = await confRes.json();
+      if (confData.success) {
+        const sentCount = confData.sent || 0;
+        if (sentCount > 0) {
+          showToast(`Evenement publie ! ${sentCount} confirmation(s) envoyee(s)`);
+        } else {
+          showToast('Evenement publie !');
+        }
+      } else {
+        showToast('Evenement publie mais erreur envoi confirmations', 'warning');
+      }
+    } catch (e) {
+      console.error('Pending confirmations error:', e);
       showToast('Evenement publie !');
     }
     loadEventDetail(currentEventId);
