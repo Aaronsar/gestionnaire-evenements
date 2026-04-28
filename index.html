@@ -1197,13 +1197,30 @@ function toggleMobileMenu() {
 // ============================================================
 // DASHBOARD (enrichi)
 // ============================================================
+// Helper to bypass Supabase's 1000-row default limit by paginating with .range()
+// queryFactory must return a fresh PostgREST query builder each call (so .range()
+// can be reapplied without conflict).
+async function fetchAllRows(queryFactory, pageSize = 1000) {
+  const all = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await queryFactory().range(from, from + pageSize - 1);
+    if (error) { console.error('fetchAllRows error', error); break; }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function loadDashboard() {
   const brand = currentBrand || 'diploma';
   const { data: events } = await db.from('events').select('*').eq('brand', brand).order('event_date', { ascending: true });
   const eventIds = (events || []).map(e => e.id);
-  const { data: registrations } = eventIds.length > 0
-    ? await db.from('registrations').select('id, checked_in, first_name, last_name, email, event_id, registered_at').in('event_id', eventIds).order('registered_at', { ascending: false })
-    : { data: [] };
+  const registrations = eventIds.length > 0
+    ? await fetchAllRows(() => db.from('registrations').select('id, checked_in, first_name, last_name, email, event_id, registered_at').in('event_id', eventIds).order('registered_at', { ascending: false }))
+    : [];
 
   const totalEvents = events?.length || 0;
   const totalRegs = registrations?.length || 0;
@@ -1917,8 +1934,8 @@ async function loadEventDetail(id) {
     formsContainer.innerHTML = '<p class="text-gray-400 text-sm">Aucun formulaire lie</p>';
   }
 
-  // Load registrations
-  const { data: registrations } = await db.from('registrations').select('*').eq('event_id', id).order('registered_at', { ascending: false });
+  // Load registrations (paginated to bypass Supabase 1000-row default limit)
+  const registrations = await fetchAllRows(() => db.from('registrations').select('*').eq('event_id', id).order('registered_at', { ascending: false }));
 
   const regs = registrations || [];
   const total = regs.length;
@@ -2112,7 +2129,7 @@ async function deleteEventById(id, name) {
 
 async function exportCSV() {
   if (!currentEventId) return;
-  const { data: regs } = await db.from('registrations').select('*').eq('event_id', currentEventId).order('registered_at', { ascending: true });
+  const regs = await fetchAllRows(() => db.from('registrations').select('*').eq('event_id', currentEventId).order('registered_at', { ascending: true }));
   if (!regs || regs.length === 0) { showToast('Aucune inscription a exporter', 'warning'); return; }
 
   const evName = document.getElementById('detail-event-name').textContent || 'evenement';
@@ -2342,7 +2359,7 @@ function addRecentScan(result, type) {
 }
 
 async function updateScannerStats(eventId) {
-  const { data: regs } = await db.from('registrations').select('checked_in').eq('event_id', eventId);
+  const regs = await fetchAllRows(() => db.from('registrations').select('checked_in').eq('event_id', eventId));
   const total = regs?.length || 0;
   const checkedIn = regs?.filter(r => r.checked_in).length || 0;
   const percent = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
@@ -2650,7 +2667,11 @@ function pvWrap(heroT, heroS, body, access) {
 }
 function pvBrief(ev) {
   if (!ev.brief) return '';
-  return `<div style="background:linear-gradient(135deg,#F5F2EC,#EDE8DF);border-radius:12px;padding:24px;margin:24px 0;border-left:4px solid #C2AB82;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#C2AB82;margin:0 0 12px;font-weight:700;">Ce qui vous attend</p><p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;">${esc(ev.brief)}</p></div>`;
+  const lines = ev.brief.split('\n').map(l => l.trim()).filter(Boolean);
+  const content = lines.length > 1
+    ? `<ul style="margin:0;padding:0;list-style:none;">${lines.map(l => `<li style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;"><span style="color:#C2AB82;font-size:16px;flex-shrink:0;line-height:1.5;font-weight:700;">✓</span><span style="font-size:15px;line-height:1.7;color:#3D4B5C;">${esc(l)}</span></li>`).join('')}</ul>`
+    : `<p style="font-size:15px;line-height:1.7;color:#3D4B5C;margin:0;">${esc(ev.brief)}</p>`;
+  return `<div style="background:linear-gradient(135deg,#F5F2EC,#EDE8DF);border-radius:12px;padding:24px;margin:24px 0;border-left:4px solid #C2AB82;"><p style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:#C2AB82;margin:0 0 16px;font-weight:700;">Ce qui vous attend</p>${content}</div>`;
 }
 function pvDetailTbl(ev) {
   const d = new Date(ev.event_date);
