@@ -3,32 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestionnaire d'Evenements</title>
+  <title>Events Studio — Diploma Santé · Medibox · Edumove</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
-    // Immediately detect ?qr= param and inject CSS to hide login BEFORE rendering
-    if (new URLSearchParams(window.location.search).get('qr')) {
-      document.write('<style>#page-login{display:none!important}#page-qr{display:block!important}</style>');
-    }
+    // Immediately detect ?qr= / ?staff= params and inject CSS to hide login BEFORE rendering
+    (function() {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('qr')) document.write('<style>#page-login{display:none!important}#page-qr{display:block!important}</style>');
+      if (p.get('staff')) document.write('<style>#page-login{display:none!important}#page-staff{display:block!important}</style>');
+    })();
   </script>
   <style>
+    /* ============ THEME PAR MARQUE (variables CSS) ============ */
+    :root {
+      /* Diploma Santé par défaut */
+      --p50:#F3F5F9; --p100:#E7EBF3; --p200:#C9D2E3; --p300:#A3B2CD;
+      --p400:#6C81A8; --p500:#3D5379; --p600:#1C2436; --p700:#141B2A;
+      --p800:#10151F; --p900:#0B0F17;
+      --accent:#C2AB82; --accent-soft:#F0E9DC;
+      --dark:#1C2436; --dark-2:#232D44;
+      --surface:#F5F2EC;
+    }
+    body { background: var(--surface); font-family:'DM Sans', -apple-system, sans-serif; }
+    .font-serif-display { font-family:'DM Serif Display', Georgia, serif; }
+    #page-login h1, #page-brand-select h1,
+    #app-layout h1 { font-family:'DM Serif Display', Georgia, serif; font-weight:400; letter-spacing:-0.01em; }
+
     [x-cloak] { display: none !important; }
     .page { display: none; }
     .page.active { display: block; }
-    .fade-in { animation: fadeIn 0.3s ease-in; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.35s cubic-bezier(.21,.61,.35,1); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Cartes : bordure fine + ombre douce façon site Diploma */
+    #app-layout .bg-white.rounded-2xl, #app-layout .bg-white.rounded-xl {
+      box-shadow: 0 1px 2px rgba(28,36,54,0.04), 0 8px 24px -12px rgba(28,36,54,0.08);
+    }
+
+    /* Sidebar sombre */
+    .sidebar-dark { background: linear-gradient(180deg, var(--dark) 0%, var(--dark-2) 100%); }
+    .sidebar-link { color: rgba(255,255,255,0.62); transition: all .18s ease; }
+    .sidebar-link:hover { color:#fff; background: rgba(255,255,255,0.06); }
+    .sidebar-link.active { color: var(--accent); background: rgba(255,255,255,0.07); }
+    .gold-divider { width:48px; height:2px; background: linear-gradient(90deg, var(--accent), transparent); }
+
+    /* Cartes marques */
+    .brand-card { transition: transform .25s cubic-bezier(.21,.61,.35,1), box-shadow .25s ease, border-color .25s ease; }
+    .brand-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -16px rgba(28,36,54,0.25); }
+
+    /* Cartes type d'événement */
+    .type-card { transition: all .18s ease; border:2px solid #E8E4DB; cursor:pointer; background:#fff; }
+    .type-card:hover { border-color: var(--p300); }
+    .type-card.selected { border-color: var(--p600); background: var(--p50); box-shadow: 0 4px 14px -6px rgba(28,36,54,0.18); }
+
     .scanner-overlay { position: relative; }
     .scanner-overlay::after {
-      content: '';
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 200px; height: 200px;
-      border: 3px solid #3b82f6;
-      border-radius: 12px;
-      pointer-events: none;
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 200px; height: 200px;
+      border: 3px solid var(--accent); border-radius: 12px; pointer-events: none;
     }
     #reader video { border-radius: 12px; }
     .toast {
@@ -36,7 +73,7 @@
       padding: 16px 24px; border-radius: 12px; color: white;
       font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
       animation: slideIn 0.3s ease-out, slideOut 0.3s ease-in 2.7s;
-      max-width: 400px;
+      max-width: 400px; font-family:'DM Sans', sans-serif;
     }
     .toast.success { background: #10b981; }
     .toast.error { background: #ef4444; }
@@ -48,15 +85,26 @@
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['DM Sans', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            serif: ['DM Serif Display', 'Georgia', 'serif'],
+          },
           colors: {
-            primary: { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a' }
+            primary: {
+              50:'var(--p50)',100:'var(--p100)',200:'var(--p200)',300:'var(--p300)',
+              400:'var(--p400)',500:'var(--p500)',600:'var(--p600)',700:'var(--p700)',
+              800:'var(--p800)',900:'var(--p900)'
+            },
+            accent: { DEFAULT:'var(--accent)', soft:'var(--accent-soft)' },
+            surface: 'var(--surface)',
+            ink: '#1C2436',
           }
         }
       }
     }
   </script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen">
 
 <!-- ============================================================ -->
 <!-- TOAST CONTAINER -->
@@ -67,33 +115,32 @@
 <!-- LOGIN PAGE -->
 <!-- ============================================================ -->
 <div id="page-login" class="page active">
-  <div class="min-h-screen flex items-center justify-center">
-    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+  <div class="min-h-screen flex items-center justify-center" style="background:#1C2436;">
+    <div class="w-full max-w-md px-4 fade-in">
       <div class="text-center mb-8">
-        <div class="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-        </div>
-        <h1 class="text-2xl font-bold text-gray-900">Gestionnaire d'Evenements</h1>
-        <p class="text-gray-500 mt-2">Connectez-vous pour acceder au dashboard</p>
+        <p class="text-xs font-bold uppercase tracking-[3px]" style="color:#C2AB82;">Events Studio</p>
+        <h1 class="text-4xl text-white mt-3">Gestion des <em class="italic" style="color:#C2AB82;">événements</em></h1>
+        <div class="gold-divider mx-auto mt-6" style="background:linear-gradient(90deg,transparent,#C2AB82,transparent);"></div>
+        <p class="mt-5 text-sm" style="color:rgba(255,255,255,0.55);">Diploma Santé · Medibox · Edumove</p>
       </div>
-      <div>
+      <div class="bg-white rounded-2xl p-8" style="box-shadow:0 24px 64px -24px rgba(0,0,0,0.5);">
         <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
         <input type="email" id="login-email"
-          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition mb-4"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition mb-4"
           placeholder="Entrez votre email"
           onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus()">
         <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
         <input type="password" id="login-password"
-          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
           placeholder="Entrez le mot de passe"
           onkeydown="if(event.key==='Enter') doLogin()">
         <button onclick="doLogin()"
-          class="w-full mt-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-xl transition">
+          class="w-full mt-6 text-white font-semibold py-3.5 px-4 rounded-full transition hover:opacity-90"
+          style="background:#1C2436;">
           Se connecter
         </button>
       </div>
+      <p class="text-center text-xs mt-6" style="color:rgba(255,255,255,0.3);">&copy; 2026 Diploma Santé — Plateforme interne</p>
     </div>
   </div>
 </div>
@@ -102,30 +149,62 @@
 <!-- BRAND SELECTOR PAGE -->
 <!-- ============================================================ -->
 <div id="page-brand-select" style="display:none;">
-  <div class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="max-w-2xl w-full px-4">
-      <h1 class="text-2xl font-bold text-gray-900 text-center mb-2">Choisissez votre plateforme</h1>
-      <p class="text-gray-500 text-center mb-8">Selectionnez la marque pour gerer vos evenements</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="min-h-screen flex items-center justify-center" style="background:#F5F2EC;">
+    <div class="max-w-5xl w-full px-4 py-12 fade-in">
+      <div class="text-center mb-12">
+        <p class="text-xs font-bold uppercase tracking-[3px]" style="color:#C2AB82;">Events Studio</p>
+        <h1 class="text-4xl mt-3" style="color:#1C2436;">Choisissez votre <em class="italic" style="color:#C2AB82;">marque</em></h1>
+        <div class="gold-divider mx-auto mt-6" style="background:linear-gradient(90deg,transparent,#C2AB82,transparent);"></div>
+        <p class="text-gray-500 mt-5">Chaque marque dispose de son espace dédié : événements, communications et équipes</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Diploma Sante Card -->
-        <button onclick="selectBrand('diploma')" class="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-[#C2AB82] hover:shadow-xl transition-all p-8 text-center group">
-          <img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma Sante" class="h-12 mx-auto mb-4">
-          <h2 class="text-lg font-bold" style="color:#1C2436;">Diploma Sante</h2>
-          <p class="text-sm text-gray-500 mt-2">Evenements presentiel & visio, QR codes, SMS, HubSpot</p>
-          <div class="mt-4 flex gap-2 justify-center flex-wrap">
-            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1C2436;color:#C2AB82;">QR Code</span>
-            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1C2436;color:#C2AB82;">SMS</span>
-            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1C2436;color:#C2AB82;">HubSpot</span>
+        <button onclick="selectBrand('diploma')" class="brand-card bg-white rounded-2xl border border-gray-100 overflow-hidden text-left group">
+          <div class="h-28 flex items-center justify-center" style="background:#1C2436;">
+            <img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma Santé" class="h-10">
+          </div>
+          <div class="p-6">
+            <h2 class="text-xl font-serif-display" style="color:#1C2436;">Diploma Santé</h2>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">Prépa médecine d'excellence — JPO, salons, webinaires, QR codes &amp; SMS</p>
+            <div class="mt-4 flex gap-2 flex-wrap">
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#F0E9DC;color:#8A744C;">JPO</span>
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#F0E9DC;color:#8A744C;">Salons</span>
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#F0E9DC;color:#8A744C;">Webinaires</span>
+            </div>
+            <p class="mt-5 text-sm font-semibold flex items-center gap-1.5" style="color:#C2AB82;">Entrer <span class="transition-transform group-hover:translate-x-1">&rarr;</span></p>
+          </div>
+        </button>
+        <!-- Medibox Card -->
+        <button onclick="selectBrand('medibox')" class="brand-card bg-white rounded-2xl border border-gray-100 overflow-hidden text-left group">
+          <div class="h-28 flex items-center justify-center gap-3" style="background:#0C2E2B;">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(45,184,161,0.18);">
+              <svg class="w-6 h-6" fill="none" stroke="#2DB8A1" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <span class="text-white text-xl font-bold tracking-[2px]">MEDIBOX</span>
+          </div>
+          <div class="p-6">
+            <h2 class="text-xl font-serif-display" style="color:#0C2E2B;">Medibox</h2>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">L'univers Medibox — journées portes ouvertes et webinaires dédiés</p>
+            <div class="mt-4 flex gap-2 flex-wrap">
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#DDF3EF;color:#0E8074;">JPO</span>
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#DDF3EF;color:#0E8074;">Webinaires</span>
+            </div>
+            <p class="mt-5 text-sm font-semibold flex items-center gap-1.5" style="color:#0E8074;">Entrer <span class="transition-transform group-hover:translate-x-1">&rarr;</span></p>
           </div>
         </button>
         <!-- Edumove Card -->
-        <button onclick="selectBrand('edumove')" class="bg-white rounded-2xl shadow-lg border-2 border-transparent hover:border-[#EC680A] hover:shadow-xl transition-all p-8 text-center group">
-          <img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" class="h-12 mx-auto mb-4">
-          <h2 class="text-lg font-bold" style="color:#1B1D3A;">Edumove</h2>
-          <p class="text-sm text-gray-500 mt-2">Webinaires en ligne, rappels email via Brevo</p>
-          <div class="mt-4 flex gap-2 justify-center flex-wrap">
-            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#1B1D3A;color:#EC680A;">Webinaires</span>
-            <span class="text-xs px-2 py-1 rounded-full font-medium" style="background:#615CA5;color:white;">Email Brevo</span>
+        <button onclick="selectBrand('edumove')" class="brand-card bg-white rounded-2xl border border-gray-100 overflow-hidden text-left group">
+          <div class="h-28 flex items-center justify-center" style="background:#1B1D3A;">
+            <img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" class="h-9" style="filter:brightness(0) invert(1);">
+          </div>
+          <div class="p-6">
+            <h2 class="text-xl font-serif-display" style="color:#1B1D3A;">Edumove</h2>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">Études de santé en Europe — webinaires et journées portes ouvertes</p>
+            <div class="mt-4 flex gap-2 flex-wrap">
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#FDEBDC;color:#C25508;">Webinaires</span>
+              <span class="text-[11px] px-2.5 py-1 rounded-full font-semibold" style="background:#FDEBDC;color:#C25508;">JPO</span>
+            </div>
+            <p class="mt-5 text-sm font-semibold flex items-center gap-1.5" style="color:#EC680A;">Entrer <span class="transition-transform group-hover:translate-x-1">&rarr;</span></p>
           </div>
         </button>
       </div>
@@ -138,61 +217,57 @@
 <!-- ============================================================ -->
 <div id="app-layout" style="display:none;">
   <!-- Sidebar -->
-  <div class="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-40 hidden lg:block">
+  <div class="fixed inset-y-0 left-0 w-64 sidebar-dark z-40 hidden lg:block">
     <div class="p-6">
-      <div class="flex items-center gap-3 mb-8">
-        <div class="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
-          <svg class="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-        </div>
-        <span class="font-bold text-gray-900">EventManager</span>
+      <div id="sidebar-brand" class="mb-3 min-h-[56px] flex items-center">
+        <!-- Logo marque injecté par applyBrandTheme -->
       </div>
-      <nav class="space-y-1">
-        <a href="#dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 transition" data-page="dashboard">
+      <div class="gold-divider mb-7"></div>
+      <nav class="space-y-1.5">
+        <a href="#dashboard" class="nav-link sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-page="dashboard">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
           Dashboard
         </a>
-        <a href="#events" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 transition" data-page="events">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-          Evenements
+        <a href="#events" class="nav-link sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-page="events">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Événements
         </a>
-        <a href="#event-new" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 transition" data-page="event-new">
+        <a href="#event-new" class="nav-link sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-page="event-new">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-          Nouvel evenement
+          Nouvel événement
         </a>
       </nav>
     </div>
-    <div class="absolute bottom-0 left-0 right-0 p-6 space-y-1">
-      <button onclick="switchBrand()" id="btn-switch-brand" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 transition w-full">
+    <div class="absolute bottom-0 left-0 right-0 p-6 space-y-1" style="border-top:1px solid rgba(255,255,255,0.08);">
+      <button onclick="switchBrand()" id="btn-switch-brand" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm w-full">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
         Changer de marque
       </button>
-      <button onclick="doLogout()" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-gray-50 transition w-full">
+      <button onclick="doLogout()" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm w-full">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-        Deconnexion
+        Déconnexion
       </button>
     </div>
   </div>
 
   <!-- Mobile Header -->
-  <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30 px-4 py-3 flex items-center justify-between">
-    <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-gray-100">
+  <div class="lg:hidden fixed top-0 left-0 right-0 sidebar-dark z-30 px-4 py-3 flex items-center justify-between">
+    <button onclick="toggleMobileMenu()" class="p-2 rounded-lg text-white/80 hover:text-white">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
-    <span class="font-bold text-gray-900">EventManager</span>
-    <button onclick="doLogout()" class="p-2 rounded-lg hover:bg-gray-100">
-      <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+    <span id="mobile-brand-title" class="font-semibold text-white text-sm tracking-wide">Events Studio</span>
+    <button onclick="doLogout()" class="p-2 rounded-lg text-white/60 hover:text-white">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
     </button>
   </div>
 
   <!-- Mobile Menu Overlay -->
-  <div id="mobile-menu" class="fixed inset-0 bg-black/50 z-50 hidden" onclick="toggleMobileMenu()">
-    <div class="bg-white w-64 h-full p-6" onclick="event.stopPropagation()">
-      <nav class="space-y-1 mt-4">
-        <a href="#dashboard" onclick="toggleMobileMenu()" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50">Dashboard</a>
-        <a href="#events" onclick="toggleMobileMenu()" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50">Evenements</a>
-        <a href="#event-new" onclick="toggleMobileMenu()" class="nav-link flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50">Nouvel evenement</a>
+  <div id="mobile-menu" class="fixed inset-0 bg-black/60 z-50 hidden" onclick="toggleMobileMenu()">
+    <div class="sidebar-dark w-64 h-full p-6" onclick="event.stopPropagation()">
+      <nav class="space-y-1.5 mt-4">
+        <a href="#dashboard" onclick="toggleMobileMenu()" class="nav-link sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-page="dashboard">Dashboard</a>
+        <a href="#events" onclick="toggleMobileMenu()" class="nav-link sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-page="events">Événements</a>
+        <a href="#event-new" onclick="toggleMobileMenu()" class="nav-link sidebar-link flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium" data-page="event-new">Nouvel événement</a>
       </nav>
     </div>
   </div>
@@ -279,6 +354,13 @@
               oninput="filterEventsList()">
             <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
+          <select id="events-filter-type" class="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" onchange="filterEventsList()">
+            <option value="">Tous les types</option>
+            <option value="jpo">Journées Portes Ouvertes</option>
+            <option value="salon">Salons</option>
+            <option value="webinaire">Webinaires</option>
+            <option value="autre">Autres</option>
+          </select>
           <select id="events-filter-status" class="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" onchange="filterEventsList()">
             <option value="">Tous les statuts</option>
             <option value="published">Publies</option>
@@ -304,8 +386,17 @@
           <a href="#events" class="p-2 rounded-lg hover:bg-gray-100">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           </a>
-          <h1 class="text-2xl font-bold text-gray-900">Nouvel evenement</h1>
+          <h1 class="text-3xl text-gray-900">Nouvel événement</h1>
         </div>
+
+        <!-- Type d'événement -->
+        <div class="mb-6">
+          <p class="text-xs font-bold uppercase tracking-[2px] text-accent mb-3">Type d'événement</p>
+          <div id="event-type-picker" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Cartes générées par renderTypePicker() -->
+          </div>
+        </div>
+
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="md:col-span-2">
@@ -349,7 +440,7 @@
               <input type="date" id="evt-date" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Campus *</label>
+              <label id="evt-location-label" class="block text-sm font-medium text-gray-700 mb-2">Campus *</label>
               <select id="evt-location" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white" onchange="toggleVisioFields()">
                 <option value="">-- Choisir un lieu --</option>
                 <option value="100 quai de la Rapee, 75012 Paris">100 quai de la Rapee - Paris 12e</option>
@@ -357,6 +448,7 @@
                 <option value="29 rue Lauriston, 75016 Paris">29 rue Lauriston - Paris 16e</option>
                 <option value="visio">En visioconference</option>
               </select>
+              <input type="text" id="evt-location-text" class="hidden w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: Salon de l'Etudiant, Porte de Versailles - Paris">
               <div id="visio-link-container" class="hidden mt-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Lien de visioconference *</label>
                 <input type="url" id="evt-visio-link" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" placeholder="Ex: https://zoom.us/j/123456789">
@@ -366,7 +458,7 @@
             <!-- Time fields: range for physical, single for visio -->
             <div id="time-range-fields">
               <label class="block text-sm font-medium text-gray-700 mb-2">Heure de debut *</label>
-              <input type="time" id="evt-time-start" value="14:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" onchange="if(currentBrand==='edumove')updateEndTimeFromDuration()">
+              <input type="time" id="evt-time-start" value="14:00" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" onchange="if(isWebinarForm())updateEndTimeFromDuration()">
             </div>
             <div id="time-end-field">
               <label class="block text-sm font-medium text-gray-700 mb-2">Heure de fin *</label>
@@ -476,27 +568,27 @@
             </div>
           </div>
 
-          <!-- HubSpot Forms -->
+          <!-- CRM Forms -->
           <div class="mt-8 border-t border-gray-200 pt-6">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Formulaires HubSpot lies</h3>
+              <h3 class="text-lg font-semibold text-gray-900">Formulaires CRM lies</h3>
               <button onclick="refreshHubspotForms()" class="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 Rafraichir
               </button>
             </div>
             <div class="relative mb-3">
-              <input type="text" id="form-search" placeholder="Rechercher un formulaire HubSpot..."
+              <input type="text" id="form-search" placeholder="Rechercher un formulaire CRM..."
                 class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                 oninput="filterForms()">
               <svg class="w-4 h-4 text-gray-400 absolute right-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
             <div id="form-checkboxes" class="max-h-64 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-1">
-              <p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires HubSpot...</p>
+              <p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires CRM...</p>
             </div>
             <div id="selected-forms-count" class="text-xs text-gray-500 mt-2">0 formulaire(s) selectionne(s)</div>
 
-            <!-- Manual Meta form input -->
+            <!-- Manual Meta form input (forms with 0 submissions not yet in list) -->
             <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
               <p class="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Ajouter un formulaire Meta Lead Ads manuellement</p>
               <p class="text-xs text-blue-600 mb-2">Pour les formulaires Meta pas encore dans la liste (0 soumissions)</p>
@@ -669,9 +761,82 @@
 
         <!-- Linked Forms -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-3">Formulaires HubSpot lies</h3>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-gray-900">Formulaires lies</h3>
+            <button onclick="toggleDetailFormPicker()" id="btn-manage-forms" class="text-sm text-primary-600 hover:text-primary-700 font-medium">Gerer les formulaires</button>
+          </div>
           <div id="detail-forms" class="space-y-2">
             <p class="text-gray-400 text-sm">Aucun formulaire lie</p>
+          </div>
+          <div id="detail-form-picker" class="hidden mt-4 pt-4 border-t border-gray-200">
+            <div class="relative mb-3">
+              <input type="text" id="detail-form-search" placeholder="Rechercher un formulaire..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                oninput="filterDetailForms()">
+            </div>
+            <div id="detail-form-checkboxes" class="max-h-64 overflow-y-auto border border-gray-200 rounded-xl p-3 space-y-1">
+              <p class="text-gray-400 text-sm text-center py-4">Chargement...</p>
+            </div>
+            <div id="detail-selected-forms-count" class="text-xs text-gray-500 mt-2">0 formulaire(s) selectionne(s)</div>
+            <div class="flex gap-2 mt-3">
+              <button onclick="saveEventForms()" class="bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold py-2 px-4 rounded-xl transition">Enregistrer</button>
+              <button onclick="toggleDetailFormPicker(false)" class="text-sm text-gray-500 hover:text-gray-700 py-2 px-4">Annuler</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Staff Section (JPO & Salons) -->
+        <div id="detail-staff-section" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6 hidden">
+          <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-accent-soft">
+                  <svg class="w-5 h-5" style="color:var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900">Équipe staff <span id="staff-count-badge" class="ml-1 text-xs px-2 py-0.5 rounded-full bg-accent-soft font-bold align-middle" style="color:var(--accent);">0</span></h3>
+                  <p class="text-xs text-gray-400">Vos équipes s'inscrivent via le lien ci-dessous pour participer à l'événement</p>
+                </div>
+              </div>
+              <button onclick="exportStaffCSV()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2 px-4 rounded-xl transition flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Export CSV
+              </button>
+            </div>
+            <!-- Lien d'inscription staff -->
+            <div class="mt-4 flex items-stretch gap-2">
+              <div class="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-surface/60 min-w-0">
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                <span id="staff-link-display" class="text-sm text-gray-600 truncate font-mono"></span>
+              </div>
+              <button onclick="copyStaffLink()" class="bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 rounded-xl transition flex items-center gap-2 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copier
+              </button>
+              <a id="staff-link-open" href="#" target="_blank" class="bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold px-4 rounded-xl transition flex items-center flex-shrink-0" title="Ouvrir la page d'inscription staff">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+            <div id="staff-migration-warning" class="hidden mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p class="text-xs text-amber-700">La table <code class="font-mono bg-amber-100 px-1 rounded">staff_registrations</code> n'existe pas encore. Exécutez <strong>supabase-migration.sql</strong> dans le SQL Editor de Supabase pour activer le système staff.</p>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Nom</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Téléphone</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Rôle</th>
+                  <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Inscrit le</th>
+                  <th class="px-6 py-3"></th>
+                </tr>
+              </thead>
+              <tbody id="detail-staff-list" class="divide-y divide-gray-100">
+                <tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">Aucun staff inscrit pour le moment</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -770,8 +935,8 @@
 <div id="page-qr" style="display:none;">
   <div style="min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;display:flex;flex-direction:column;align-items:center;padding:24px 16px;">
     <div style="background:#FFF;border-radius:20px;max-width:420px;width:100%;overflow:hidden;box-shadow:0 8px 32px rgba(28,36,54,0.12);">
-      <div style="background:#1C2436;padding:32px 24px;text-align:center;">
-        <img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" style="width:180px;margin-bottom:20px;">
+      <div id="qr-hero" style="background:#1C2436;padding:32px 24px;text-align:center;">
+        <div id="qr-logo-container" style="margin-bottom:20px;"><img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" style="width:180px;"></div>
         <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:rgba(194,171,130,0.2);border-radius:50%;margin-bottom:16px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="#C2AB82" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
@@ -790,8 +955,57 @@
       <div style="background:#F5F2EC;border-left:3px solid #C2AB82;border-radius:0 8px 8px 0;padding:12px 16px;margin:0 24px 24px;text-align:left;">
         <p style="font-size:13px;color:#3D4B5C;font-style:italic;line-height:1.5;">Astuce : faites une <strong>capture d'ecran</strong> pour y acceder facilement le jour J !</p>
       </div>
-      <div style="background:#1C2436;padding:20px 24px;text-align:center;">
-        <p style="font-size:12px;color:rgba(255,255,255,0.4);">&copy; 2026 <a href="mailto:admissions@diploma-sante.fr" style="color:#C2AB82;text-decoration:none;">Diploma Sante</a></p>
+      <div id="qr-footer-bar" style="background:#1C2436;padding:20px 24px;text-align:center;">
+        <p id="qr-footer-text" style="font-size:12px;color:rgba(255,255,255,0.4);">&copy; 2026 <a href="mailto:admissions@diploma-sante.fr" style="color:#C2AB82;text-decoration:none;">Diploma Sante</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STAFF PUBLIC SIGNUP PAGE (no auth required) -->
+<!-- ============================================================ -->
+<div id="page-staff" style="display:none;">
+  <div style="min-height:100vh;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;display:flex;flex-direction:column;align-items:center;padding:24px 16px;">
+    <div style="background:#FFF;border-radius:20px;max-width:460px;width:100%;overflow:hidden;box-shadow:0 8px 32px rgba(28,36,54,0.12);">
+      <div id="staff-hero" style="background:#1C2436;padding:32px 24px;text-align:center;">
+        <div id="staff-brand-logo" style="margin-bottom:20px;"></div>
+        <p id="staff-type-label" style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#C2AB82;font-weight:700;margin:0 0 10px;">Événement</p>
+        <h1 id="staff-title" style="font-family:'DM Serif Display',Georgia,serif;font-size:24px;color:#FFF;line-height:1.25;margin:0 0 10px;">Chargement...</h1>
+        <p style="font-size:14px;color:rgba(255,255,255,0.65);line-height:1.5;">Inscription équipe staff — rejoignez-nous pour encadrer cet événement</p>
+      </div>
+      <div id="staff-event-details" style="background:#F5F2EC;margin:24px;border-radius:12px;padding:20px;"></div>
+      <div id="staff-form-container" style="padding:0 24px 28px;">
+        <p style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#C2AB82;font-weight:700;margin:0 0 16px;">Vos informations</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <input type="text" id="staff-firstname" placeholder="Prénom *" style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid #E5E0D5;border-radius:10px;font-size:14px;font-family:inherit;outline:none;" onfocus="this.style.borderColor='#C2AB82'" onblur="this.style.borderColor='#E5E0D5'">
+          <input type="text" id="staff-lastname" placeholder="Nom *" style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid #E5E0D5;border-radius:10px;font-size:14px;font-family:inherit;outline:none;" onfocus="this.style.borderColor='#C2AB82'" onblur="this.style.borderColor='#E5E0D5'">
+        </div>
+        <input type="email" id="staff-email" placeholder="Email *" style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid #E5E0D5;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px;" onfocus="this.style.borderColor='#C2AB82'" onblur="this.style.borderColor='#E5E0D5'">
+        <input type="tel" id="staff-phone" placeholder="Téléphone" style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid #E5E0D5;border-radius:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px;" onfocus="this.style.borderColor='#C2AB82'" onblur="this.style.borderColor='#E5E0D5'">
+        <select id="staff-role" style="width:100%;box-sizing:border-box;padding:13px 14px;border:1.5px solid #E5E0D5;border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#FFF;color:#3D4B5C;margin-bottom:20px;">
+          <option value="">Rôle souhaité (optionnel)</option>
+          <option value="Accueil">Accueil des participants</option>
+          <option value="Scan QR">Scan des QR codes</option>
+          <option value="Orientation">Orientation / conseils</option>
+          <option value="Logistique">Logistique</option>
+          <option value="Animation">Animation / présentation</option>
+          <option value="Autre">Autre</option>
+        </select>
+        <button id="staff-submit-btn" onclick="submitStaffForm()" style="width:100%;background:#1C2436;color:#FFF;font-size:15px;font-weight:700;padding:15px;border:none;border-radius:100px;cursor:pointer;font-family:inherit;transition:opacity .2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+          Je m'inscris comme staff
+        </button>
+        <p id="staff-form-status" style="font-size:13px;text-align:center;margin:12px 0 0;color:#8B95A5;"></p>
+      </div>
+      <div id="staff-success" style="display:none;padding:12px 24px 32px;text-align:center;">
+        <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;background:rgba(194,171,130,0.15);border-radius:50%;margin-bottom:16px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#C2AB82" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#1C2436;margin:0 0 8px;">Vous êtes inscrit(e) !</h2>
+        <p style="font-size:14px;color:#3D4B5C;line-height:1.6;margin:0;">Merci ! L'équipe organisation vous recontactera avec toutes les informations pratiques.</p>
+      </div>
+      <div style="background:#1C2436;padding:18px 24px;text-align:center;">
+        <p id="staff-footer" style="font-size:12px;color:rgba(255,255,255,0.4);">&copy; 2026 Diploma Santé</p>
       </div>
     </div>
   </div>
@@ -816,28 +1030,113 @@ let currentEventId = null;
 let scannerInstance = null;
 let scannerEventId = null;
 let currentUser = null;
-let currentBrand = null; // 'diploma' | 'edumove'
+let currentBrand = null; // 'diploma' | 'medibox' | 'edumove'
+let currentEventType = null; // 'jpo' | 'salon' | 'webinaire' | 'autre'
 
 // ============================================================
 // BRAND CONFIG
 // ============================================================
 const BRAND_CONFIG = {
   diploma: {
-    name: 'Diploma Sante',
+    name: 'Diploma Santé',
     logo: 'https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png',
     primary: '#1C2436', accent: '#C2AB82',
-    sidebarTitle: 'Diploma Events',
+    sidebarTitle: 'Diploma Santé',
     sender: 'admissions@diploma-sante.fr', senderName: 'Diploma Sante',
+    logoHtml: '<div style="background:#FFF;border-radius:10px;padding:8px 14px;display:inline-block;"><img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma Santé" style="height:26px;display:block;"></div>',
+    theme: {
+      p50:'#F3F5F9', p100:'#E7EBF3', p200:'#C9D2E3', p300:'#A3B2CD', p400:'#6C81A8',
+      p500:'#3D5379', p600:'#1C2436', p700:'#141B2A', p800:'#10151F', p900:'#0B0F17',
+      accent:'#C2AB82', accentSoft:'#F0E9DC', dark:'#1C2436', dark2:'#232D44', surface:'#F5F2EC'
+    }
+  },
+  medibox: {
+    name: 'Medibox',
+    logo: null,
+    primary: '#0C2E2B', accent: '#2DB8A1',
+    sidebarTitle: 'Medibox',
+    sender: 'contact@medibox.fr', senderName: 'Medibox',
+    logoHtml: '<div style="display:flex;align-items:center;gap:10px;"><div style="width:34px;height:34px;border-radius:10px;background:rgba(45,184,161,0.18);display:flex;align-items:center;justify-content:center;"><svg style="width:20px;height:20px;" fill="none" stroke="#2DB8A1" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg></div><span style="color:#FFF;font-size:17px;font-weight:700;letter-spacing:2px;">MEDIBOX</span></div>',
+    theme: {
+      p50:'#EAF6F4', p100:'#D3EEE9', p200:'#A8DDD4', p300:'#79C9BC', p400:'#3FAE9C',
+      p500:'#199481', p600:'#0E8074', p700:'#0B675D', p800:'#095049', p900:'#0C2E2B',
+      accent:'#199481', accentSoft:'#DDF3EF', dark:'#0C2E2B', dark2:'#124540', surface:'#F2F6F4'
+    }
   },
   edumove: {
     name: 'Edumove',
     logo: 'https://www.edumove.fr/edumove-logo.svg',
     primary: '#1B1D3A', accent: '#EC680A', violet: '#615CA5',
-    sidebarTitle: 'Edumove Events',
+    sidebarTitle: 'Edumove',
     sender: 'admissions@edumove.fr', senderName: 'Edumove',
     defaultZoom: 'https://us02web.zoom.us/j/83013598154',
+    logoHtml: '<img src="https://www.edumove.fr/edumove-logo.svg" alt="Edumove" style="height:32px;filter:brightness(0) invert(1);">',
+    theme: {
+      p50:'#FDF1E7', p100:'#FBE2CE', p200:'#F7C49D', p300:'#F3A76C', p400:'#EF893B',
+      p500:'#E8721E', p600:'#EC680A', p700:'#D45C08', p800:'#A94A07', p900:'#1B1D3A',
+      accent:'#EC680A', accentSoft:'#FDEBDC', dark:'#1B1D3A', dark2:'#26284A', surface:'#F6F5F2'
+    }
   }
 };
+
+// ============================================================
+// EVENT TYPES CONFIG
+// jpo & salon = physiques (QR code + staff) / webinaire = en ligne
+// Les salons sont exclusifs a Diploma Sante
+// ============================================================
+const EVENT_TYPES = {
+  jpo: {
+    id: 'jpo', label: 'Journée Portes Ouvertes', short: 'JPO', article: 'la',
+    physical: true, staff: true,
+    desc: 'Accueil sur site — QR codes, SMS & équipe staff',
+    badge: 'bg-amber-100 text-amber-800',
+    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>'
+  },
+  salon: {
+    id: 'salon', label: 'Salon', short: 'Salon', article: 'le',
+    physical: true, staff: true, brands: ['diploma'],
+    desc: 'Stand sur un salon étudiant — équipe staff dédiée',
+    badge: 'bg-purple-100 text-purple-800',
+    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>'
+  },
+  webinaire: {
+    id: 'webinaire', label: 'Webinaire', short: 'Webinaire', article: 'le',
+    physical: false, staff: false,
+    desc: 'En ligne via Zoom — rappels email & SMS automatiques',
+    badge: 'bg-sky-100 text-sky-800',
+    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>'
+  },
+  autre: {
+    id: 'autre', label: 'Autre événement', short: 'Événement', article: "l'",
+    physical: true, staff: false,
+    desc: 'Format libre — forum, conférence, atelier...',
+    badge: 'bg-gray-100 text-gray-700',
+    icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'
+  }
+};
+
+function brandEventTypes(brand) {
+  const order = brand === 'diploma' ? ['jpo', 'salon', 'webinaire', 'autre']
+    : brand === 'edumove' ? ['webinaire', 'jpo']
+    : ['jpo', 'webinaire'];
+  return order.filter(t => !EVENT_TYPES[t].brands || EVENT_TYPES[t].brands.includes(brand));
+}
+
+// Un evenement est-il un webinaire ? (retro-compatible avec les anciens events sans event_type)
+function isWebinarEvent(ev) {
+  if (ev.event_type) return ev.event_type === 'webinaire';
+  return ev.brand === 'edumove' || !!ev.zoom_join_url;
+}
+
+function eventTypeOf(ev) {
+  if (ev.event_type && EVENT_TYPES[ev.event_type]) return EVENT_TYPES[ev.event_type];
+  return isWebinarEvent(ev) ? EVENT_TYPES.webinaire : EVENT_TYPES.autre;
+}
+
+function typeBadge(ev) {
+  const t = eventTypeOf(ev);
+  return `<span class="text-[11px] px-2 py-0.5 rounded-full font-semibold ${t.badge}">${t.short}</span>`;
+}
 
 function selectBrand(brand) {
   currentBrand = brand;
@@ -857,91 +1156,150 @@ function switchBrand() {
 
 function applyBrandTheme(brand) {
   const config = BRAND_CONFIG[brand];
-  // Update sidebar title & logo
-  const sidebarTitle = document.querySelector('#app-layout .font-bold.text-gray-900');
-  if (sidebarTitle) sidebarTitle.textContent = config.sidebarTitle;
-  const mobileTitle = document.querySelector('.lg\\:hidden .font-bold.text-gray-900');
+  if (!config) return;
+  const t = config.theme;
+  const r = document.documentElement.style;
+  ['p50','p100','p200','p300','p400','p500','p600','p700','p800','p900'].forEach(k => r.setProperty('--' + k, t[k]));
+  r.setProperty('--accent', t.accent);
+  r.setProperty('--accent-soft', t.accentSoft);
+  r.setProperty('--dark', t.dark);
+  r.setProperty('--dark-2', t.dark2);
+  r.setProperty('--surface', t.surface);
+  const sidebarBrand = document.getElementById('sidebar-brand');
+  if (sidebarBrand) sidebarBrand.innerHTML = config.logoHtml;
+  const mobileTitle = document.getElementById('mobile-brand-title');
   if (mobileTitle) mobileTitle.textContent = config.sidebarTitle;
-  // Update sidebar icon color
-  const iconContainer = document.querySelector('#app-layout .w-10.h-10');
-  if (iconContainer) {
-    iconContainer.style.background = brand === 'edumove' ? '#EC680A20' : '';
-    const svg = iconContainer.querySelector('svg');
-    if (svg) svg.style.color = brand === 'edumove' ? '#EC680A' : '';
-  }
 }
 
-function updateNavForBrand() {
-  const isEdumove = currentBrand === 'edumove';
-  // Hide article selector but keep name input visible
+// ============================================================
+// TYPE PICKER (formulaire nouvel evenement)
+// ============================================================
+function renderTypePicker() {
+  const container = document.getElementById('event-type-picker');
+  if (!container) return;
+  const types = brandEventTypes(currentBrand || 'diploma');
+  container.className = `grid grid-cols-1 sm:grid-cols-2 ${types.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-' + types.length} gap-4`;
+  container.innerHTML = types.map(id => {
+    const t = EVENT_TYPES[id];
+    const sel = currentEventType === id;
+    return `<button type="button" onclick="selectEventType('${id}')" class="type-card rounded-2xl p-5 text-left ${sel ? 'selected' : ''}">
+      <div class="flex items-center justify-between mb-3">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center ${sel ? 'text-white' : 'text-gray-400'}" style="background:${sel ? 'var(--p600)' : '#F3F1EB'};">${t.icon}</div>
+        ${sel ? '<svg class="w-5 h-5" style="color:var(--p600);" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' : ''}
+      </div>
+      <p class="font-semibold text-gray-900 text-sm">${t.label}</p>
+      <p class="text-xs text-gray-500 mt-1 leading-relaxed">${t.desc}</p>
+      ${t.staff ? '<span class="inline-block mt-2 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide bg-accent-soft" style="color:var(--accent);">Lien staff auto</span>' : ''}
+    </button>`;
+  }).join('');
+}
+
+function selectEventType(typeId) {
+  currentEventType = typeId;
+  renderTypePicker();
+  updateFormForType();
+}
+
+function isWebinarForm() { return currentEventType === 'webinaire'; }
+
+function updateFormForType() {
+  const brand = currentBrand || 'diploma';
+  const type = EVENT_TYPES[currentEventType] || EVENT_TYPES.autre;
+  const isWebinar = isWebinarForm();
+  const isEdumoveWebinar = isWebinar && brand === 'edumove';
+
+  // Titre du formulaire
+  const titles = { jpo: 'Nouvelle Journée Portes Ouvertes', salon: 'Nouveau salon', webinaire: 'Nouveau webinaire', autre: 'Nouvel événement' };
+  const formTitle = document.querySelector('#page-event-new h1');
+  if (formTitle) formTitle.textContent = titles[currentEventType] || 'Nouvel événement';
+
+  // Article : auto-adapte au type, masque pour webinaire Edumove
   const articleSelect = document.getElementById('evt-article');
   if (articleSelect) {
-    articleSelect.style.display = isEdumove ? 'none' : '';
-    // Also hide/show the article help text
+    articleSelect.value = type.article;
+    articleSelect.style.display = isEdumoveWebinar ? 'none' : '';
     const helpText = articleSelect.closest('.md\\:col-span-2')?.querySelector('.text-xs.text-gray-400');
-    if (helpText) helpText.style.display = isEdumove ? 'none' : '';
-    // Update placeholder for Edumove
-    const nameInput = document.getElementById('evt-name');
-    if (nameInput) nameInput.placeholder = isEdumove ? 'Ex: Webinaire orientation post-bac' : 'Ex: Forum des etudes de medecine 2026';
+    if (helpText) helpText.style.display = isEdumoveWebinar ? 'none' : '';
   }
-  // Location (campus) selector - hide only the select and its label, not the parent div (which contains visio-link-container)
-  const locationEl = document.getElementById('evt-location');
-  if (locationEl) {
-    locationEl.style.display = isEdumove ? 'none' : '';
-    const locationLabel = locationEl.previousElementSibling;
-    if (locationLabel && locationLabel.tagName === 'LABEL') locationLabel.style.display = isEdumove ? 'none' : '';
+
+  // Placeholder du nom
+  const nameInput = document.getElementById('evt-name');
+  if (nameInput) {
+    const placeholders = {
+      jpo: 'Ex: Journée Portes Ouvertes — Campus Rapée',
+      salon: "Ex: Salon de l'Etudiant Paris 2026",
+      webinaire: 'Ex: Webinaire orientation post-bac',
+      autre: 'Ex: Forum des études de médecine 2026'
+    };
+    nameInput.placeholder = placeholders[currentEventType] || placeholders.autre;
   }
-  // Brief section
-  const briefSection = document.getElementById('evt-brief');
-  if (briefSection) briefSection.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
-  // HubSpot property
-  const hubspotPropEl = document.getElementById('evt-hubspot-prop');
-  if (hubspotPropEl) hubspotPropEl.closest('.md\\:col-span-2').style.display = isEdumove ? 'none' : '';
-  // SMS Factor section - visible for both brands, default sender changes
-  const smsFactorEl = document.getElementById('evt-sms-factor');
-  if (smsFactorEl) {
-    smsFactorEl.closest('.md\\:col-span-2').style.display = '';
-    const senderInput = document.getElementById('evt-sms-sender');
-    if (senderInput && senderInput.value === 'DIPLOMA' && isEdumove) senderInput.value = 'EDUMOVE';
-    if (senderInput && senderInput.value === 'EDUMOVE' && !isEdumove) senderInput.value = 'DIPLOMA';
+
+  // Lieu : select campus (Diploma JPO/autre), texte libre (salons & autres marques), cache (webinaire)
+  const locationSelect = document.getElementById('evt-location');
+  const locationText = document.getElementById('evt-location-text');
+  const locationLabel = document.getElementById('evt-location-label');
+  const useCampusSelect = !isWebinar && brand === 'diploma' && currentEventType !== 'salon';
+  const useTextLocation = !isWebinar && !useCampusSelect;
+  if (locationSelect) locationSelect.style.display = useCampusSelect ? '' : 'none';
+  if (locationText) locationText.classList.toggle('hidden', !useTextLocation);
+  if (locationLabel) {
+    locationLabel.style.display = isWebinar ? 'none' : '';
+    locationLabel.textContent = currentEventType === 'salon' ? 'Lieu du salon *' : (useCampusSelect ? 'Campus *' : 'Adresse / lieu *');
   }
-  // AI customization section
-  const aiSection = document.querySelector('#page-event-new .mt-8.border-t.border-gray-200.pt-6');
-  if (aiSection) aiSection.style.display = isEdumove ? 'none' : '';
-  // HubSpot forms section
-  // HubSpot forms section - keep visible for Edumove (used for registration intake)
-  const hubspotFormsSection = aiSection ? aiSection.nextElementSibling : null;
-  if (hubspotFormsSection) hubspotFormsSection.style.display = '';
-  // For Edumove: show visio link field always, pre-fill default zoom, show duration instead of end time
-  if (isEdumove) {
-    document.getElementById('visio-link-container').classList.remove('hidden');
+  if (locationText) {
+    locationText.placeholder = currentEventType === 'salon'
+      ? "Ex: Salon de l'Etudiant, Porte de Versailles - Paris"
+      : 'Ex: 12 rue des Ecoles, 75005 Paris';
+  }
+
+  // Visio / horaires
+  const visioContainer = document.getElementById('visio-link-container');
+  if (isWebinar) {
+    visioContainer.classList.remove('hidden');
     const visioInput = document.getElementById('evt-visio-link');
-    if (visioInput && !visioInput.value) visioInput.value = BRAND_CONFIG.edumove.defaultZoom;
-    // Update labels for Edumove
+    if (visioInput && !visioInput.value && brand === 'edumove') visioInput.value = BRAND_CONFIG.edumove.defaultZoom;
+    const visioLabel = document.querySelector('#visio-link-container label');
+    if (visioLabel) visioLabel.textContent = 'Lien Zoom du webinaire *';
     const timeLabel = document.querySelector('#time-range-fields label');
-    if (timeLabel) timeLabel.textContent = 'Heure de debut du webinaire *';
-    // Show duration field, hide end time field
+    if (timeLabel) timeLabel.textContent = 'Heure de début du webinaire *';
     document.getElementById('time-end-field').style.display = 'none';
     document.getElementById('duration-field').style.display = '';
-    // Set default start time to 18:30 for Edumove
     const startInput = document.getElementById('evt-time-start');
     if (startInput && startInput.value === '14:00') startInput.value = '18:30';
     updateEndTimeFromDuration();
-    // Update form title
-    const formTitle = document.querySelector('#page-event-new h1');
-    if (formTitle) formTitle.textContent = 'Nouveau webinaire';
-    // Update visio link label
-    const visioLabel = document.querySelector('#visio-link-container label');
-    if (visioLabel) visioLabel.textContent = 'Lien Zoom du webinaire *';
   } else {
-    const formTitle = document.querySelector('#page-event-new h1');
-    if (formTitle) formTitle.textContent = 'Nouvel evenement';
+    if (locationSelect && locationSelect.value !== 'visio') visioContainer.classList.add('hidden');
     const timeLabel = document.querySelector('#time-range-fields label');
-    if (timeLabel) timeLabel.textContent = 'Heure de debut *';
-    // Show end time field, hide duration field
+    if (timeLabel) timeLabel.textContent = 'Heure de début *';
     document.getElementById('time-end-field').style.display = '';
     document.getElementById('duration-field').style.display = 'none';
+    const startInput = document.getElementById('evt-time-start');
+    if (startInput && startInput.value === '18:30') startInput.value = '14:00';
   }
+
+  // Brief & personnalisation IA : masques pour webinaire Edumove uniquement (templates dedies)
+  const briefSection = document.getElementById('evt-brief');
+  if (briefSection) briefSection.closest('.md\\:col-span-2').style.display = isEdumoveWebinar ? 'none' : '';
+  const aiSection = document.querySelector('#page-event-new .mt-8.border-t.border-gray-200.pt-6');
+  if (aiSection) aiSection.style.display = isEdumoveWebinar ? 'none' : '';
+
+  // HubSpot property (legacy - toujours masque)
+  const hubspotPropEl = document.getElementById('evt-hubspot-prop');
+  if (hubspotPropEl) hubspotPropEl.closest('.md\\:col-span-2').style.display = 'none';
+
+  // Expediteur SMS par defaut selon la marque
+  const senderInput = document.getElementById('evt-sms-sender');
+  if (senderInput && ['DIPLOMA', 'EDUMOVE', 'MEDIBOX'].includes(senderInput.value)) {
+    senderInput.value = brand === 'edumove' ? 'EDUMOVE' : brand === 'medibox' ? 'MEDIBOX' : 'DIPLOMA';
+  }
+}
+
+// Retro-compatibilite : certains points d'entree appellent encore updateNavForBrand()
+function updateNavForBrand() {
+  const types = brandEventTypes(currentBrand || 'diploma');
+  if (!currentEventType || !types.includes(currentEventType)) currentEventType = types[0];
+  renderTypePicker();
+  updateFormForType();
 }
 
 function updateEndTimeFromDuration() {
@@ -1053,8 +1411,9 @@ async function handleRoute() {
     loadQrPage(id);
     return;
   }
-  // Hide QR page if navigating away
+  // Hide QR/staff pages if navigating away
   document.getElementById('page-qr').style.display = 'none';
+  document.getElementById('page-staff').style.display = 'none';
 
   if (!(await checkAuth())) return;
 
@@ -1063,12 +1422,7 @@ async function handleRoute() {
 
   // Update nav
   document.querySelectorAll('.nav-link').forEach(link => {
-    link.classList.remove('bg-primary-50', 'text-primary-700');
-    link.classList.add('text-gray-600');
-    if (link.dataset.page === page) {
-      link.classList.add('bg-primary-50', 'text-primary-700');
-      link.classList.remove('text-gray-600');
-    }
+    link.classList.toggle('active', link.dataset.page === page);
   });
 
   // Stop scanner if leaving scanner page
@@ -1131,6 +1485,18 @@ async function loadQrPage(code) {
     }
 
     const ev = reg.events;
+
+    // Theming par marque (Diploma = rendu existant inchangé)
+    const qrBrand = BRAND_CONFIG[ev.brand] || BRAND_CONFIG.diploma;
+    if ((ev.brand || 'diploma') !== 'diploma') {
+      document.getElementById('qr-hero').style.background = qrBrand.theme.dark;
+      document.getElementById('qr-logo-container').innerHTML = qrBrand.logo
+        ? '<img src="' + qrBrand.logo + '" alt="' + qrBrand.name + '" style="height:40px;' + (ev.brand === 'edumove' ? 'filter:brightness(0) invert(1);' : '') + '">'
+        : '<span style="color:#FFF;font-size:22px;font-weight:700;letter-spacing:4px;">' + qrBrand.name.toUpperCase() + '</span>';
+      document.getElementById('qr-footer-bar').style.background = qrBrand.theme.dark;
+      document.getElementById('qr-footer-text').innerHTML = '&copy; ' + new Date().getFullYear() +
+        ' <a href="mailto:' + qrBrand.sender + '" style="color:' + qrBrand.theme.accent + ';text-decoration:none;">' + qrBrand.name + '</a>';
+    }
 
     // Title
     document.getElementById('qr-title').textContent =
@@ -1273,7 +1639,7 @@ async function loadDashboard() {
   container.innerHTML = upcoming.slice(0, 5).map(e => {
     const diff = Math.ceil((new Date(e.event_date) - new Date()) / (1000*60*60*24));
     const countdown = diff === 0 ? "Aujourd'hui" : diff === 1 ? 'Demain' : `J-${diff}`;
-    return `<a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition"><div class="flex items-center justify-between"><div class="flex-1 min-w-0"><p class="font-semibold text-gray-900">${esc(e.name)}</p><p class="text-sm text-gray-500">${formatEventSummary(e)}</p></div><div class="flex items-center gap-2 ml-3"><span class="text-xs px-2 py-1 rounded-full bg-primary-50 text-primary-700 font-bold">${countdown}</span><span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span></div></div></a>`;
+    return `<a href="#event/${e.id}" class="block bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition"><div class="flex items-center justify-between"><div class="flex-1 min-w-0"><div class="flex items-center gap-2 flex-wrap"><p class="font-semibold text-gray-900">${esc(e.name)}</p>${typeBadge(e)}</div><p class="text-sm text-gray-500">${formatEventSummary(e)}</p></div><div class="flex items-center gap-2 ml-3"><span class="text-xs px-2 py-1 rounded-full bg-primary-50 text-primary-700 font-bold">${countdown}</span><span class="text-xs px-3 py-1 rounded-full ${statusClass(e.status)}">${statusLabel(e.status)}</span></div></div></a>`;
   }).join('');
 }
 
@@ -1305,12 +1671,14 @@ async function loadEvents() {
 
 function filterEventsList() {
   const query = (document.getElementById('events-search')?.value || '').toLowerCase();
+  const typeFilter = document.getElementById('events-filter-type')?.value || '';
   const statusFilter = document.getElementById('events-filter-status')?.value || '';
   const timeFilter = document.getElementById('events-filter-time')?.value || '';
   const now = new Date();
 
   let filtered = allEventsCache.filter(e => {
     if (query && !e.name.toLowerCase().includes(query) && !(e.location || '').toLowerCase().includes(query)) return false;
+    if (typeFilter && eventTypeOf(e).id !== typeFilter) return false;
     if (statusFilter && e.status !== statusFilter) return false;
     if (timeFilter === 'upcoming' && new Date(e.event_date) < now) return false;
     if (timeFilter === 'past' && new Date(e.event_date) >= now) return false;
@@ -1330,7 +1698,10 @@ function filterEventsList() {
     container.innerHTML = page.map(e => `
       <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:border-primary-200 transition flex items-center justify-between">
         <a href="#event/${e.id}" class="flex-1 min-w-0">
-          <p class="font-semibold text-gray-900">${esc(e.name)}</p>
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-semibold text-gray-900">${esc(e.name)}</p>
+            ${typeBadge(e)}
+          </div>
           <p class="text-sm text-gray-500 truncate">${formatEventSummary(e)}</p>
         </a>
         <div class="flex items-center gap-2 ml-3 flex-shrink-0">
@@ -1572,6 +1943,22 @@ async function generateCustomEmails() {
 }
 
 let hubspotFormsCache = [];
+let selectedForms = new Map(); // form_id -> { name, formType }
+
+function setFormSelected(id, name, formType, checked) {
+  if (checked) selectedForms.set(id, { name, formType: formType || 'crm' });
+  else selectedForms.delete(id);
+}
+
+function onFormCheckboxChange(cb) {
+  setFormSelected(cb.value, cb.dataset.name, cb.dataset.formType, cb.checked);
+  updateSelectedCount();
+}
+
+function onDetailFormCheckboxChange(cb) {
+  setFormSelected(cb.value, cb.dataset.name, cb.dataset.formType, cb.checked);
+  updateDetailSelectedCount();
+}
 
 function resetEventForm() {
   document.getElementById('evt-name').value = '';
@@ -1580,6 +1967,7 @@ function resetEventForm() {
   stopVoiceRecording();
   document.getElementById('evt-date').value = '';
   document.getElementById('evt-location').value = '';
+  document.getElementById('evt-location-text').value = '';
   document.getElementById('evt-visio-link').value = '';
   document.getElementById('visio-link-container').classList.add('hidden');
   document.getElementById('evt-time-start').value = '14:00';
@@ -1603,6 +1991,7 @@ function resetEventForm() {
   document.getElementById('improve-status').classList.add('hidden');
   customSmsData = null;
   customEmailsData = null;
+  selectedForms.clear();
   document.getElementById('form-search').value = '';
   manualMetaForms.length = 0;
   document.getElementById('manual-meta-forms-list').innerHTML = '';
@@ -1612,12 +2001,17 @@ function resetEventForm() {
 
 async function loadHubspotForms() {
   const container = document.getElementById('form-checkboxes');
-  container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires HubSpot...</p>';
+  container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Chargement des formulaires...</p>';
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/hubspot-forms`);
+    const res = await fetch('/api/crm-forms');
     const data = await res.json();
     hubspotFormsCache = data.forms || [];
+    if (hubspotFormsCache.length === 0) {
+      const err = data.error ? ' (' + data.error + ')' : '';
+      container.innerHTML = '<p class="text-amber-500 text-sm text-center py-4">Aucun formulaire disponible' + esc(err) + '. Cliquez sur Rafraichir.</p>';
+      return;
+    }
     renderFormCheckboxes(hubspotFormsCache);
   } catch (e) {
     container.innerHTML = '<p class="text-red-400 text-sm text-center py-4">Erreur de chargement des formulaires</p>';
@@ -1632,48 +2026,113 @@ function refreshHubspotForms() {
 function filterForms() {
   const query = document.getElementById('form-search').value.toLowerCase();
   const filtered = hubspotFormsCache.filter(f => f.name.toLowerCase().includes(query));
-  renderFormCheckboxes(filtered);
+  renderFormCheckboxes(filtered, 'form-checkboxes', 'onFormCheckboxChange');
 }
 
-function renderFormCheckboxes(forms) {
-  const container = document.getElementById('form-checkboxes');
+function filterDetailForms() {
+  const query = document.getElementById('detail-form-search').value.toLowerCase();
+  const filtered = hubspotFormsCache.filter(f => f.name.toLowerCase().includes(query));
+  renderFormCheckboxes(filtered, 'detail-form-checkboxes', 'onDetailFormCheckboxChange');
+}
+
+function renderFormCheckboxes(forms, containerId = 'form-checkboxes', onChangeFn = 'onFormCheckboxChange') {
+  const container = document.getElementById(containerId);
   if (forms.length === 0) {
     container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Aucun formulaire trouve</p>';
     return;
   }
   const metaForms = forms.filter(f => f.formType === 'meta');
-  const hubspotForms = forms.filter(f => f.formType !== 'meta');
+  const crmForms = forms.filter(f => f.formType !== 'meta');
   let html = '';
   if (metaForms.length > 0) {
     html += '<p class="text-xs font-semibold text-blue-600 uppercase tracking-wider px-2 pt-2 pb-1">Meta Lead Ads</p>';
     html += metaForms.map(f => `
       <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 cursor-pointer border-l-2 border-blue-400">
         <input type="checkbox" class="form-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-          value="${esc(f.id)}" data-name="${esc(f.name)}" data-form-type="meta" onchange="updateSelectedCount()">
+          value="${esc(f.id)}" data-name="${esc(f.name)}" data-form-type="meta" onchange="${onChangeFn}(this)"
+          ${selectedForms.has(f.id) ? 'checked' : ''}>
         <span class="text-sm text-gray-700 flex-1">${esc(f.name)}</span>
         <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Meta</span>
       </label>
     `).join('');
-    html += '<hr class="my-2 border-gray-200">';
-    html += '<p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 pt-1 pb-1">HubSpot</p>';
+    if (crmForms.length > 0) {
+      html += '<hr class="my-2 border-gray-200">';
+      html += '<p class="text-xs font-semibold text-indigo-600 uppercase tracking-wider px-2 pt-1 pb-1">CRM</p>';
+    }
   }
-  html += hubspotForms.map(f => `
-    <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-      <input type="checkbox" class="form-checkbox w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
-        value="${esc(f.id)}" data-name="${esc(f.name)}" data-form-type="hubspot" onchange="updateSelectedCount()">
+  html += crmForms.map(f => `
+    <label class="flex items-center gap-3 p-2 rounded-lg hover:bg-indigo-50 cursor-pointer border-l-2 border-indigo-300">
+      <input type="checkbox" class="form-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+        value="${esc(f.id)}" data-name="${esc(f.name)}" data-form-type="crm" onchange="${onChangeFn}(this)"
+        ${selectedForms.has(f.id) ? 'checked' : ''}>
       <span class="text-sm text-gray-700 flex-1">${esc(f.name)}</span>
-      <span class="text-xs text-gray-400">${f.createdAt ? f.createdAt.slice(0,10) : ''}</span>
+      <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">CRM</span>
     </label>
   `).join('');
   container.innerHTML = html;
-  updateSelectedCount();
+  if (containerId === 'detail-form-checkboxes') updateDetailSelectedCount();
+  else updateSelectedCount();
 }
 
 function updateSelectedCount() {
-  const checked = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
   const manualMeta = document.querySelectorAll('#manual-meta-forms-list .manual-meta-entry');
-  const total = checked.length + manualMeta.length;
+  const total = selectedForms.size + manualMeta.length;
   document.getElementById('selected-forms-count').textContent = `${total} formulaire(s) selectionne(s)`;
+}
+
+function updateDetailSelectedCount() {
+  const el = document.getElementById('detail-selected-forms-count');
+  if (el) el.textContent = `${selectedForms.size} formulaire(s) selectionne(s)`;
+}
+
+function buildFormsPayload(eventId) {
+  const forms = [];
+  selectedForms.forEach((meta, id) => {
+    forms.push({ event_id: eventId, hubspot_form_id: id, form_name: meta.name, form_type: meta.formType });
+  });
+  manualMetaForms.forEach(name => {
+    forms.push({ event_id: eventId, hubspot_form_id: `meta:${name}`, form_name: name, form_type: 'meta' });
+  });
+  return forms;
+}
+
+async function ensureHubspotFormsCache() {
+  if (hubspotFormsCache.length > 0) return;
+  const res = await fetch('/api/crm-forms');
+  const data = await res.json();
+  hubspotFormsCache = data.forms || [];
+}
+
+async function toggleDetailFormPicker(show) {
+  const picker = document.getElementById('detail-form-picker');
+  const open = show !== undefined ? show : picker.classList.contains('hidden');
+  if (!open) {
+    picker.classList.add('hidden');
+    return;
+  }
+  picker.classList.remove('hidden');
+  await ensureHubspotFormsCache();
+  selectedForms.clear();
+  const { data: linked } = await db.from('event_forms').select('*').eq('event_id', currentEventId);
+  (linked || []).forEach(f => {
+    selectedForms.set(f.hubspot_form_id, { name: f.form_name || f.hubspot_form_id, formType: f.form_type || 'crm' });
+  });
+  document.getElementById('detail-form-search').value = '';
+  renderFormCheckboxes(hubspotFormsCache, 'detail-form-checkboxes', 'onDetailFormCheckboxChange');
+}
+
+async function saveEventForms() {
+  if (!currentEventId) return;
+  const forms = buildFormsPayload(currentEventId);
+  const { error: delError } = await db.from('event_forms').delete().eq('event_id', currentEventId);
+  if (delError) { showToast('Erreur: ' + delError.message, 'error'); return; }
+  if (forms.length > 0) {
+    const { error } = await db.from('event_forms').insert(forms);
+    if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+  }
+  showToast(`${forms.length} formulaire(s) enregistre(s)`);
+  toggleDetailFormPicker(false);
+  loadEventDetail(currentEventId);
 }
 
 const manualMetaForms = [];
@@ -1683,9 +2142,9 @@ function addManualMetaForm() {
   if (!name) return;
   if (manualMetaForms.includes(name)) { showToast('Formulaire deja ajoute', 'error'); return; }
   manualMetaForms.push(name);
+  setFormSelected(`meta:${name}`, name, 'meta', true);
   input.value = '';
   const list = document.getElementById('manual-meta-forms-list');
-  const idx = manualMetaForms.length - 1;
   list.innerHTML += `<div class="manual-meta-entry flex items-center gap-2 p-2 bg-white rounded-lg border border-blue-200" data-name="${esc(name)}">
     <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Meta</span>
     <span class="text-sm text-gray-700 flex-1">${esc(name)}</span>
@@ -1697,56 +2156,57 @@ function addManualMetaForm() {
 function removeManualMetaForm(btn, name) {
   const idx = manualMetaForms.indexOf(name);
   if (idx > -1) manualMetaForms.splice(idx, 1);
+  selectedForms.delete(`meta:${name}`);
   btn.closest('.manual-meta-entry').remove();
   updateSelectedCount();
 }
 
 async function saveEvent() {
-  const isEdumove = currentBrand === 'edumove';
+  const brand = currentBrand || 'diploma';
+  const isWebinar = isWebinarForm();
+  const isEdumoveWebinar = isWebinar && brand === 'edumove';
   const name = document.getElementById('evt-name').value.trim();
-  const article = isEdumove ? 'le' : document.getElementById('evt-article').value;
+  const article = isEdumoveWebinar ? 'le' : document.getElementById('evt-article').value;
   const description = document.getElementById('evt-description').value.trim();
-  const brief = isEdumove ? null : document.getElementById('evt-brief').value.trim();
+  const brief = isEdumoveWebinar ? null : document.getElementById('evt-brief').value.trim();
   const evtDate = document.getElementById('evt-date').value;
   const evtTimeStart = document.getElementById('evt-time-start').value;
   const evtTimeEnd = document.getElementById('evt-time-end').value;
-  const location = isEdumove ? 'visio' : document.getElementById('evt-location').value;
+  // Lieu selon le type : select campus (Diploma JPO/autre), texte libre (salon & autres marques)
+  const useCampusSelect = !isWebinar && brand === 'diploma' && currentEventType !== 'salon';
+  const location = isWebinar ? 'visio'
+    : (useCampusSelect ? document.getElementById('evt-location').value
+                       : document.getElementById('evt-location-text').value.trim());
   const capacity = document.getElementById('evt-capacity').value;
   const status = document.getElementById('evt-status').value;
-  const hubspotProp = isEdumove ? '' : document.getElementById('evt-hubspot-prop').value.trim();
+  const hubspotProp = isEdumoveWebinar ? '' : document.getElementById('evt-hubspot-prop').value.trim();
   const smsFactorEnabled = document.getElementById('evt-sms-factor').checked;
-  const smsSender = document.getElementById('evt-sms-sender').value.trim() || (isEdumove ? 'EDUMOVE' : 'DIPLOMA');
+  const smsSender = document.getElementById('evt-sms-sender').value.trim()
+    || (brand === 'edumove' ? 'EDUMOVE' : brand === 'medibox' ? 'MEDIBOX' : 'DIPLOMA');
   const smsPushType = parseInt(document.getElementById('evt-sms-push-type').value);
   const smsStop = document.getElementById('evt-sms-stop').checked;
 
-  const isVisio = location === 'visio' || isEdumove;
-  const visioLink = isEdumove
-    ? (document.getElementById('evt-visio-link').value.trim() || BRAND_CONFIG.edumove.defaultZoom)
-    : (isVisio ? document.getElementById('evt-visio-link').value.trim() : null);
+  const isVisio = isWebinar || location === 'visio';
+  const visioLink = isVisio
+    ? (document.getElementById('evt-visio-link').value.trim() || (brand === 'edumove' ? BRAND_CONFIG.edumove.defaultZoom : ''))
+    : null;
   const locationLabel = isVisio ? 'Visioconference' : location;
 
-  if (isEdumove) {
-    if (!name || !evtDate || !evtTimeStart) {
-      showToast('Nom, date et heure sont obligatoires', 'error');
-      return;
-    }
-    if (!evtTimeEnd) {
-      showToast('Heure de fin obligatoire', 'error');
-      return;
-    }
-  } else {
-    if (!name || !evtDate || !evtTimeStart || !location) {
-      showToast('Nom, date, heure et lieu sont obligatoires', 'error');
-      return;
-    }
-    if (!evtTimeEnd) {
-      showToast('Heure de fin obligatoire', 'error');
-      return;
-    }
-    if (isVisio && !visioLink) {
-      showToast('Le lien de visioconference est obligatoire', 'error');
-      return;
-    }
+  if (!name || !evtDate || !evtTimeStart) {
+    showToast('Nom, date et heure sont obligatoires', 'error');
+    return;
+  }
+  if (!isVisio && !location) {
+    showToast('Le lieu est obligatoire', 'error');
+    return;
+  }
+  if (!evtTimeEnd) {
+    showToast('Heure de fin obligatoire', 'error');
+    return;
+  }
+  if (isVisio && !visioLink) {
+    showToast('Le lien de visioconference est obligatoire', 'error');
+    return;
   }
 
   // Add timezone offset so 14:00 Paris = 14:00 stored (not interpreted as UTC)
@@ -1766,7 +2226,7 @@ async function saveEvent() {
     saveBtn.textContent = 'Creation en cours...';
 
     // Insert event
-    const { data: event, error } = await db.from('events').insert({
+    const payload = {
       name,
       article,
       description: description || null,
@@ -1781,58 +2241,36 @@ async function saveEvent() {
       sms_sender: smsSender,
       sms_push_type: smsPushType,
       sms_stop: smsStop,
-      zoom_join_url: visioLink,
+      zoom_join_url: visioLink || null,
       custom_sms: customSmsData || null,
       custom_emails: customEmailsData || null,
-      brand: currentBrand || 'diploma'
-    }).select().single();
+      brand: currentBrand || 'diploma',
+      event_type: currentEventType || null
+    };
+    let { data: event, error } = await db.from('events').insert(payload).select().single();
+
+    // Repli si la colonne event_type n'existe pas encore (migration SQL non executee)
+    if (error && /event_type/.test(error.message || '')) {
+      delete payload.event_type;
+      ({ data: event, error } = await db.from('events').insert(payload).select().single());
+      if (!error) showToast('Colonne event_type absente : executez supabase-migration.sql pour activer les types', 'warning');
+    }
 
     if (error) {
       showToast('Erreur: ' + error.message, 'error');
       return;
     }
 
-    // Insert forms from checkboxes + manual Meta forms
-    const checkedBoxes = document.querySelectorAll('#form-checkboxes input[type=checkbox]:checked');
-    const forms = [];
-    checkedBoxes.forEach(cb => {
-      forms.push({ event_id: event.id, hubspot_form_id: cb.value, form_name: cb.dataset.name || null, form_type: cb.dataset.formType || 'hubspot' });
-    });
-    // Add manual Meta forms
-    manualMetaForms.forEach(name => {
-      forms.push({ event_id: event.id, hubspot_form_id: `meta:${name}`, form_name: name, form_type: 'meta' });
-    });
+    const forms = buildFormsPayload(event.id);
 
     if (forms.length > 0) {
-      await db.from('event_forms').insert(forms);
+      const { error: formsError } = await db.from('event_forms').insert(forms);
+      if (formsError) {
+        showToast('Evenement cree mais erreur formulaires: ' + formsError.message, 'warning');
+      }
     }
 
-    // Create HubSpot workflow + properties automatically (Diploma only)
-    if (hubspotProp && !isEdumove) {
-      saveBtn.textContent = 'Configuration HubSpot...';
-      try {
-        const wfRes = await fetch(SUPABASE_URL + '/functions/v1/create-workflow', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event_id: event.id,
-            event_name: name,
-            hubspot_property_name: hubspotProp
-          })
-        });
-        const wfData = await wfRes.json();
-        if (wfData.workflow_id) {
-          showToast('Evenement + workflow HubSpot crees !');
-        } else {
-          showToast('Evenement cree. Workflow HubSpot: ' + (wfData.error || 'avertissement'), 'warning');
-        }
-      } catch (e) {
-        console.error('Workflow creation error:', e);
-        showToast('Evenement cree mais erreur workflow HubSpot', 'warning');
-      }
-    } else {
-      showToast('Evenement cree avec succes !');
-    }
+    showToast('Evenement cree avec succes !');
 
     navigate('event/' + event.id);
   } finally {
@@ -1845,12 +2283,13 @@ async function saveEvent() {
 // EVENT DETAIL
 // ============================================================
 async function loadEventDetail(id) {
-  const { data: event, error } = await db.from('events').select('*').eq('id', id).single();
+  let { data: event, error } = await db.from('events').select('*').eq('id', id).single();
   if (error || !event) {
     showToast('Evenement introuvable', 'error');
     navigate('events');
     return;
   }
+  event = await maybeFixPortesOuvertesTypo(event);
 
   document.getElementById('detail-event-name').textContent = event.name;
   const startTime = new Date(event.event_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -1863,6 +2302,8 @@ async function loadEventDetail(id) {
   // Badges
   const badgesEl = document.getElementById('detail-badges');
   let badges = '';
+  const evType = eventTypeOf(event);
+  badges += `<span class="text-xs px-3 py-1 rounded-full ${evType.badge} font-semibold">${evType.label}</span>`;
   if (event.sms_factor_enabled) {
     const smsType = event.sms_push_type === 0 ? 'Marketing' : 'Notif';
     badges += `<span class="text-xs px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium">SMS: ${esc(event.sms_sender||'DIPLOMA')} (${smsType})${event.sms_stop?' +STOP':''}</span>`;
@@ -1890,12 +2331,14 @@ async function loadEventDetail(id) {
   document.getElementById('preview-content').classList.add('hidden');
   document.getElementById('preview-chevron').style.transform = '';
 
-  // Brand-specific UI adjustments
-  const isEdumoveEvent = event.brand === 'edumove';
-  // Hide scanner button for Edumove
-  document.querySelector('[onclick="openScanner()"]').style.display = isEdumoveEvent ? 'none' : '';
-  // Hide HubSpot property row for Edumove
-  document.getElementById('detail-hubspot-prop').closest('div').style.display = isEdumoveEvent ? 'none' : '';
+  // Type-specific UI adjustments
+  const isWebinarDetail = isWebinarEvent(event);
+  // Hide scanner button for webinars (no physical check-in)
+  document.querySelector('[onclick="openScanner()"]').style.display = isWebinarDetail ? 'none' : '';
+  // Staff section (JPO & salons)
+  loadStaffSection(event);
+  // Hide HubSpot property row (legacy - hidden since migration to the new CRM)
+  document.getElementById('detail-hubspot-prop').closest('div').style.display = 'none';
   // Show HubSpot forms section for both brands (Edumove uses forms for registration intake too)
   const formsSection = document.getElementById('detail-forms')?.closest('.bg-white');
   if (formsSection) formsSection.style.display = '';
@@ -1924,7 +2367,9 @@ async function loadEventDetail(id) {
   if (forms && forms.length > 0) {
     formsContainer.innerHTML = forms.map(f => `
       <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-        ${f.form_type === 'meta'
+        ${f.form_type === 'crm'
+          ? '<span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">CRM</span>'
+          : f.form_type === 'meta'
           ? '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Meta</span>'
           : '<span class="text-xs font-mono bg-gray-200 px-2 py-1 rounded">' + esc(f.hubspot_form_id) + '</span>'}
         <span class="text-sm text-gray-700">${esc(f.form_name || 'Sans nom')}</span>
@@ -1948,11 +2393,10 @@ async function loadEventDetail(id) {
   document.getElementById('detail-stat-absent').textContent = absent;
   document.getElementById('detail-stat-rate').textContent = rate + '%';
 
-  // Hide check-in related stats for Edumove events
-  const isEdumoveDetail = event.brand === 'edumove';
-  document.getElementById('detail-stat-checkedin').closest('.bg-white').style.display = isEdumoveDetail ? 'none' : '';
-  document.getElementById('detail-stat-absent').closest('.bg-white').style.display = isEdumoveDetail ? 'none' : '';
-  document.getElementById('detail-stat-rate').closest('.bg-white').style.display = isEdumoveDetail ? 'none' : '';
+  // Hide check-in related stats for webinars
+  document.getElementById('detail-stat-checkedin').closest('.bg-white').style.display = isWebinarDetail ? 'none' : '';
+  document.getElementById('detail-stat-absent').closest('.bg-white').style.display = isWebinarDetail ? 'none' : '';
+  document.getElementById('detail-stat-rate').closest('.bg-white').style.display = isWebinarDetail ? 'none' : '';
 
   const tbody = document.getElementById('detail-registrations');
   if (regs.length === 0) {
@@ -1960,8 +2404,8 @@ async function loadEventDetail(id) {
     return;
   }
 
-  const hideCheckin = event.brand === 'edumove';
-  const thRows = document.querySelectorAll('#page-event-detail thead th');
+  const hideCheckin = isWebinarDetail;
+  const thRows = document.querySelectorAll('#page-event-detail .bg-white:not(#detail-staff-section) thead th');
   if (thRows.length >= 5) {
     thRows[3].style.display = hideCheckin ? 'none' : '';
     thRows[4].style.display = hideCheckin ? 'none' : '';
@@ -2042,26 +2486,6 @@ async function publishEvent() {
     const { error } = await db.from('events').update({ status: 'published' }).eq('id', currentEventId);
     if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
 
-    // Activate HubSpot workflow if exists
-    const wfId = previewEvent.hubspot_workflow_id;
-    if (wfId) {
-      btn.textContent = 'Activation workflow HubSpot...';
-      try {
-        const res = await fetch(SUPABASE_URL + '/functions/v1/activate-workflow', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ workflow_id: wfId, enable: true })
-        });
-        const data = await res.json();
-        if (!data.success) {
-          showToast('Workflow non active: ' + (data.error || ''), 'warning');
-        }
-      } catch (e) {
-        console.error('Workflow activation error:', e);
-        showToast('Erreur activation workflow', 'warning');
-      }
-    }
-
     // Send pending confirmations (email + SMS) to registrations that haven't received them yet
     btn.textContent = 'Envoi des confirmations...';
     try {
@@ -2100,17 +2524,6 @@ async function unpublishEvent() {
     const { error } = await db.from('events').update({ status: 'draft' }).eq('id', currentEventId);
     if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
 
-    // Deactivate HubSpot workflow
-    const wfId = previewEvent.hubspot_workflow_id;
-    if (wfId) {
-      try {
-        await fetch(SUPABASE_URL + '/functions/v1/activate-workflow', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ workflow_id: wfId, enable: false })
-        });
-      } catch (e) { console.error('Workflow deactivation error:', e); }
-    }
     showToast('Evenement repasse en brouillon');
     loadEventDetail(currentEventId);
   } finally {
@@ -2150,13 +2563,211 @@ async function exportCSV() {
 }
 
 // ============================================================
+// STAFF SYSTEM (JPO & Salons)
+// Lien public d'inscription envoye aux equipes
+// ============================================================
+let currentStaffRows = [];
+
+function staffLinkFor(eventId) {
+  return location.origin + location.pathname.replace(/index\.html$/, '') + '?staff=' + eventId;
+}
+
+async function loadStaffSection(ev) {
+  const section = document.getElementById('detail-staff-section');
+  if (!section) return;
+  const enabled = !!eventTypeOf(ev).staff;
+  section.classList.toggle('hidden', !enabled);
+  if (!enabled) return;
+
+  const link = staffLinkFor(ev.id);
+  document.getElementById('staff-link-display').textContent = link;
+  document.getElementById('staff-link-open').href = link;
+
+  const warning = document.getElementById('staff-migration-warning');
+  const { data, error } = await db.from('staff_registrations')
+    .select('*').eq('event_id', ev.id).order('created_at', { ascending: true });
+  if (error) {
+    warning.classList.remove('hidden');
+    currentStaffRows = [];
+  } else {
+    warning.classList.add('hidden');
+    currentStaffRows = data || [];
+  }
+  renderStaffRows();
+}
+
+function renderStaffRows() {
+  const badge = document.getElementById('staff-count-badge');
+  if (badge) badge.textContent = currentStaffRows.length;
+  const tbody = document.getElementById('detail-staff-list');
+  if (!tbody) return;
+  if (currentStaffRows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">Aucun staff inscrit — partagez le lien ci-dessus à vos équipes</td></tr>';
+    return;
+  }
+  tbody.innerHTML = currentStaffRows.map(s => `
+    <tr class="hover:bg-gray-50">
+      <td class="px-6 py-3.5 text-sm font-medium text-gray-900">${esc(s.first_name || '')} ${esc(s.last_name || '')}</td>
+      <td class="px-6 py-3.5 text-sm text-gray-500">${esc(s.email)}</td>
+      <td class="px-6 py-3.5 text-sm text-gray-500">${esc(s.phone || '-')}</td>
+      <td class="px-6 py-3.5">${s.role ? `<span class="text-xs px-2.5 py-1 rounded-full bg-accent-soft font-semibold" style="color:var(--accent);">${esc(s.role)}</span>` : '<span class="text-sm text-gray-400">-</span>'}</td>
+      <td class="px-6 py-3.5 text-sm text-gray-500">${s.created_at ? formatDateTime(s.created_at) : '-'}</td>
+      <td class="px-6 py-3.5 text-right">
+        <button onclick="deleteStaffById('${s.id}')" class="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition" title="Retirer du staff">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function deleteStaffById(id) {
+  if (!confirm('Retirer cette personne du staff ?')) return;
+  const { error } = await db.from('staff_registrations').delete().eq('id', id);
+  if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+  currentStaffRows = currentStaffRows.filter(s => s.id !== id);
+  renderStaffRows();
+  showToast('Staff retiré');
+}
+
+function copyStaffLink() {
+  const link = document.getElementById('staff-link-display').textContent;
+  navigator.clipboard.writeText(link)
+    .then(() => showToast('Lien staff copié ! Envoyez-le à vos équipes'))
+    .catch(() => showToast('Impossible de copier le lien', 'error'));
+}
+
+function exportStaffCSV() {
+  if (currentStaffRows.length === 0) { showToast('Aucun staff à exporter', 'warning'); return; }
+  const evName = document.getElementById('detail-event-name').textContent || 'evenement';
+  let csv = '\ufeffPrenom,Nom,Email,Telephone,Role,Date inscription\n';
+  currentStaffRows.forEach(s => {
+    csv += `"${s.first_name || ''}","${s.last_name || ''}","${s.email || ''}","${s.phone || ''}","${s.role || ''}","${s.created_at ? formatDateTime(s.created_at) : ''}"\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `staff_${evName.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+  link.click();
+  showToast(`${currentStaffRows.length} staff exporté(s)`);
+}
+
+// ---- Page publique d'inscription staff (?staff=EVENT_ID) ----
+let staffPageEvent = null;
+
+async function loadStaffPage(eventId) {
+  try {
+    const { data: ev, error } = await db.from('events').select('*').eq('id', eventId).single();
+    if (error || !ev) {
+      document.getElementById('staff-title').textContent = 'Événement introuvable';
+      document.getElementById('staff-form-container').style.display = 'none';
+      document.getElementById('staff-event-details').innerHTML = '<p style="color:#ef4444;text-align:center;margin:0;">Ce lien n\'est pas valide ou l\'événement n\'existe plus.</p>';
+      return;
+    }
+    staffPageEvent = ev;
+    const brand = BRAND_CONFIG[ev.brand] || BRAND_CONFIG.diploma;
+    const t = eventTypeOf(ev);
+
+    // Theming par marque
+    document.getElementById('staff-hero').style.background = brand.theme.dark;
+    document.getElementById('staff-brand-logo').innerHTML = '<div style="display:inline-block;">' + brand.logoHtml + '</div>';
+    const typeLabel = document.getElementById('staff-type-label');
+    typeLabel.textContent = t.label + ' — Staff';
+    typeLabel.style.color = brand.theme.accent;
+    document.getElementById('staff-title').textContent = ev.name;
+    const submitBtn = document.getElementById('staff-submit-btn');
+    submitBtn.style.background = brand.theme.dark;
+    const footer = document.getElementById('staff-footer');
+    footer.innerHTML = '&copy; ' + new Date().getFullYear() + ' ' + esc(brand.name);
+    footer.parentElement.style.background = brand.theme.dark;
+
+    // Details evenement
+    const dateObj = new Date(ev.event_date);
+    const dateStr = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStart = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = timeStart + (ev.event_time_end ? ' - ' + ev.event_time_end : '');
+    const rows = [
+      ['📅', 'Date', dateStr.charAt(0).toUpperCase() + dateStr.slice(1)],
+      ['🕐', 'Horaires', timeStr],
+      ['📍', 'Lieu', ev.location || 'À confirmer'],
+    ];
+    document.getElementById('staff-event-details').innerHTML = rows.map(([icon, label, val]) =>
+      `<div style="display:flex;align-items:center;margin-bottom:12px;">
+        <span style="font-size:18px;margin-right:10px;">${icon}</span>
+        <div><p style="font-size:11px;color:#8B95A5;text-transform:uppercase;letter-spacing:0.5px;margin:0;">${label}</p>
+        <p style="font-size:15px;color:#1C2436;font-weight:600;margin:2px 0 0;">${esc(val)}</p></div>
+      </div>`
+    ).join('');
+  } catch (e) {
+    console.error('loadStaffPage error:', e);
+    document.getElementById('staff-title').textContent = 'Erreur';
+  }
+}
+
+async function submitStaffForm() {
+  if (!staffPageEvent) return;
+  const firstName = document.getElementById('staff-firstname').value.trim();
+  const lastName = document.getElementById('staff-lastname').value.trim();
+  const email = document.getElementById('staff-email').value.trim().toLowerCase();
+  const phone = document.getElementById('staff-phone').value.trim();
+  const role = document.getElementById('staff-role').value;
+  const status = document.getElementById('staff-form-status');
+
+  if (!firstName || !lastName || !email) {
+    status.textContent = 'Prénom, nom et email sont obligatoires';
+    status.style.color = '#ef4444';
+    return;
+  }
+  if (!/.+@.+\..+/.test(email)) {
+    status.textContent = 'Adresse email invalide';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  const btn = document.getElementById('staff-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Inscription en cours...';
+  try {
+    const { error } = await db.from('staff_registrations').insert({
+      event_id: staffPageEvent.id,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone: phone || null,
+      role: role || null,
+    });
+    if (error) {
+      if (error.code === '23505') {
+        // Deja inscrit(e) : on affiche quand meme le succes
+        document.getElementById('staff-form-container').style.display = 'none';
+        document.getElementById('staff-success').style.display = 'block';
+        return;
+      }
+      status.textContent = /staff_registrations/.test(error.message || '')
+        ? "Le système staff n'est pas encore activé. Contactez l'équipe organisation."
+        : 'Erreur : ' + error.message;
+      status.style.color = '#ef4444';
+      return;
+    }
+    document.getElementById('staff-form-container').style.display = 'none';
+    document.getElementById('staff-success').style.display = 'block';
+  } catch (e) {
+    status.textContent = 'Une erreur est survenue. Veuillez réessayer.';
+    status.style.color = '#ef4444';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Je m'inscris comme staff";
+  }
+}
+
+// ============================================================
 // DUPLICATE EVENT
 // ============================================================
 async function duplicateEvent() {
   if (!currentEventId || !previewEvent) return;
   if (!confirm(`Dupliquer l'evenement "${previewEvent.name}" ?`)) return;
   const ev = previewEvent;
-  const { data: newEvent, error } = await db.from('events').insert({
+  const dupPayload = {
     name: ev.name + ' (copie)',
     article: ev.article,
     description: ev.description,
@@ -2174,13 +2785,19 @@ async function duplicateEvent() {
     zoom_join_url: ev.zoom_join_url,
     custom_sms: ev.custom_sms,
     custom_emails: ev.custom_emails,
-    brand: ev.brand || 'diploma'
-  }).select().single();
+    brand: ev.brand || 'diploma',
+    event_type: ev.event_type || null
+  };
+  let { data: newEvent, error } = await db.from('events').insert(dupPayload).select().single();
+  if (error && /event_type/.test(error.message || '')) {
+    delete dupPayload.event_type;
+    ({ data: newEvent, error } = await db.from('events').insert(dupPayload).select().single());
+  }
   if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
   // Duplicate linked forms
   const { data: forms } = await db.from('event_forms').select('*').eq('event_id', currentEventId);
   if (forms && forms.length > 0) {
-    await db.from('event_forms').insert(forms.map(f => ({ event_id: newEvent.id, hubspot_form_id: f.hubspot_form_id, form_name: f.form_name, form_type: f.form_type || 'hubspot' })));
+    await db.from('event_forms').insert(forms.map(f => ({ event_id: newEvent.id, hubspot_form_id: f.hubspot_form_id, form_name: f.form_name, form_type: f.form_type || 'crm' })));
   }
   showToast('Evenement duplique en brouillon !');
   navigate('event/' + newEvent.id);
@@ -2389,24 +3006,65 @@ let emailTabValues = {};
 let _refreshTimer;
 
 function ucfirst(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function fixPortesOuvertesText(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text.replace(/portes ouverte\b/gi, m => m[0] === 'P' ? 'Portes ouvertes' : m === m.toUpperCase() ? 'PORTES OUVERTES' : 'portes ouvertes');
+}
+function evName(ev) { return fixPortesOuvertesText(ev.name); }
 function evNom(ev, maj) {
   const a = ev.article || 'le';
   const sep = a === "l'" ? '' : ' ';
   const art = maj ? ucfirst(a) : a;
-  return art + sep + ev.name;
+  return art + sep + evName(ev);
 }
 function evPour(ev) { return 'pour ' + evNom(ev); }
 function evDe(ev) {
+  const n = evName(ev);
   const a = ev.article || 'le';
-  if (a === "l'") return "de l'" + ev.name;
-  if (a === 'le') return 'du ' + ev.name;
-  if (a === 'les') return 'des ' + ev.name;
-  return 'de la ' + ev.name;
+  if (a === "l'") return "de l'" + n;
+  if (a === 'le') return 'du ' + n;
+  if (a === 'les') return 'des ' + n;
+  return 'de la ' + n;
+}
+function buildPortesOuvertesPatches(event) {
+  const patches = {};
+  const fixedName = fixPortesOuvertesText(event.name);
+  if (fixedName !== event.name) patches.name = fixedName;
+  if (event.custom_sms) {
+    const fixedSms = {};
+    let changed = false;
+    for (const [k, v] of Object.entries(event.custom_sms)) {
+      const fv = fixPortesOuvertesText(v);
+      fixedSms[k] = fv;
+      if (fv !== v) changed = true;
+    }
+    if (changed) patches.custom_sms = fixedSms;
+  }
+  if (event.custom_emails) {
+    const fixedEmails = {};
+    let changed = false;
+    for (const [k, v] of Object.entries(event.custom_emails)) {
+      const subj = fixPortesOuvertesText(v.subject || '');
+      const body = fixPortesOuvertesText(v.body || '');
+      fixedEmails[k] = { subject: subj, body: body };
+      if (subj !== (v.subject || '') || body !== (v.body || '')) changed = true;
+    }
+    if (changed) patches.custom_emails = fixedEmails;
+  }
+  return patches;
+}
+async function maybeFixPortesOuvertesTypo(event) {
+  const patches = buildPortesOuvertesPatches(event);
+  if (!Object.keys(patches).length) return event;
+  const { data, error } = await db.from('events').update(patches).eq('id', event.id).select().single();
+  if (error) { console.warn('Typo fix failed:', error); return event; }
+  showToast('Faute corrigee : portes ouvertes');
+  return data || { ...event, ...patches };
 }
 
 function pvEmailSubject(ev, type) {
-  const n = evNom(ev); const N = evNom(ev, true);
-  return ({'confirmation':`Inscription confirm\u00e9e \u2014 ${ev.name}`,'j-5':`J-5 \u2014 ${N} approche !`,'j-3':`J-3 \u2014 Pr\u00e9parez-vous ${evPour(ev)}`,'j-2':`Apr\u00e8s-demain, c'est ${n} !`,'j-1':`C'est DEMAIN \u2014 ${ev.name}`,'j-0-matin':`C'est AUJOURD'HUI \u2014 ${ev.name} !`})[type] || `Rappel \u2014 ${ev.name}`;
+  const n = evNom(ev); const N = evNom(ev, true); const name = evName(ev);
+  return ({'confirmation':`Inscription confirm\u00e9e \u2014 ${name}`,'j-5':`J-5 \u2014 ${N} approche !`,'j-3':`J-3 \u2014 Pr\u00e9parez-vous ${evPour(ev)}`,'j-2':`Apr\u00e8s-demain, c'est ${n} !`,'j-1':`C'est DEMAIN \u2014 ${name}`,'j-0-matin':`C'est AUJOURD'HUI \u2014 ${name} !`})[type] || `Rappel \u2014 ${name}`;
 }
 function pvEmailBody(ev, type) {
   const vis = !!ev.zoom_join_url; const n = evNom(ev); const N = evNom(ev, true); const p = evPour(ev);
@@ -2441,7 +3099,7 @@ function renderPreviews(ev) {
   const smsSectionRestore = document.getElementById('sms-preview-list')?.closest('.bg-gray-50.rounded-2xl');
   if (smsSectionRestore) smsSectionRestore.style.display = '';
 
-  if (ev.brand === 'edumove') {
+  if (ev.brand === 'edumove' && isWebinarEvent(ev)) {
     renderEdumovePreviews(ev);
     return;
   }
@@ -2456,7 +3114,12 @@ function renderPreviews(ev) {
 
   emailTabValues = {};
   const ce = ev.custom_emails || {};
-  Object.keys(ce).forEach(t => { if(ce[t]) emailTabValues[t] = {subject:ce[t].subject||'', body:ce[t].body||''}; });
+  Object.keys(ce).forEach(t => {
+    if (ce[t]) emailTabValues[t] = {
+      subject: fixPortesOuvertesText(ce[t].subject || ''),
+      body: fixPortesOuvertesText(ce[t].body || '')
+    };
+  });
   const cs = ev.custom_sms || {};
 
   document.getElementById('email-tabs').innerHTML = emailTypes.map((t,i) =>
@@ -2469,7 +3132,7 @@ function renderPreviews(ev) {
   const stopInfo = ev.sms_stop ? ' + mention STOP' : '';
   document.getElementById('sms-preview-list').innerHTML = smsTypes.map(t => {
     const dflt = pvSmsBody(ev, t.id);
-    const display = cs[t.id] || dflt;
+    const display = fixPortesOuvertesText(cs[t.id] || dflt);
     return `<div class="bg-gray-50 rounded-xl p-4"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold px-2 py-1 rounded bg-gray-200 text-gray-700">${t.lb}</span><span class="text-xs text-gray-400">de ${esc(ev.sms_sender||'DIPLOMA')}</span><span class="text-xs px-2 py-0.5 rounded ${ev.sms_push_type===0?'bg-yellow-100 text-yellow-700':'bg-blue-100 text-blue-700'}">${ev.sms_push_type===0?'Marketing':'Notif'}</span></div><textarea id="sms-${t.id}" rows="3" class="w-full border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">${esc(display)}</textarea><p class="text-xs text-gray-400 mt-1 italic">\u2139\ufe0f Le ${accessLabel} personnel sera ajout\u00e9 automatiquement sur Confirmation, J-1 et J-0${stopInfo}</p></div>`;
   }).join('');
 }
@@ -2484,7 +3147,7 @@ function showEmailTab(type) {
     t.className = `email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${t.dataset.tab===type?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`;
   });
   const ev = previewEvent, tv = emailTabValues[type];
-  const isEdumoveEv = ev && ev.brand === 'edumove';
+  const isEdumoveEv = ev && ev.brand === 'edumove' && isWebinarEvent(ev);
   const s = document.getElementById('email-subject'), b = document.getElementById('email-body');
   if (s) s.value = tv?.subject || (isEdumoveEv ? pvEdumoveSubject(ev, type) : pvEmailSubject(ev, type));
   if (b) b.value = tv?.body || (isEdumoveEv ? pvEdumoveBody(ev, type) : pvEmailBody(ev, type));
@@ -2498,7 +3161,7 @@ function onEmailFieldChange() {
 function refreshEmailPreview() {
   const type = currentEmailTab, body = document.getElementById('email-body')?.value||'';
   let html;
-  if (previewEvent && previewEvent.brand === 'edumove') {
+  if (previewEvent && previewEvent.brand === 'edumove' && isWebinarEvent(previewEvent)) {
     html = type === 'confirmation' ? pvEdumoveConfEmail(previewEvent) : pvEdumoveEmail(previewEvent, type);
   } else {
     html = type === 'confirmation' ? pvConfEmail(previewEvent, body) : pvEmail(previewEvent, type, body);
@@ -2513,12 +3176,16 @@ async function saveCustomComms() {
   const s = document.getElementById('email-subject'), b = document.getElementById('email-body');
   if (currentEmailTab && s && b) emailTabValues[currentEmailTab] = {subject:s.value, body:b.value};
   const customSms = {};
-  (window._smsTypes||[]).forEach(t => { const el = document.getElementById(`sms-${t.id}`); if(el&&el.value.trim()) customSms[t.id] = el.value.trim(); });
+  (window._smsTypes||[]).forEach(t => { const el = document.getElementById(`sms-${t.id}`); if(el&&el.value.trim()) customSms[t.id] = fixPortesOuvertesText(el.value.trim()); });
   const customEmails = {};
-  (window._emailTypes||[]).forEach(t => { const v = emailTabValues[t.id]; if(v&&(v.subject||v.body)) customEmails[t.id] = {subject:v.subject||'', body:v.body||''}; });
-  const { error } = await db.from('events').update({custom_sms:customSms, custom_emails:customEmails}).eq('id', currentEventId);
+  (window._emailTypes||[]).forEach(t => { const v = emailTabValues[t.id]; if(v&&(v.subject||v.body)) customEmails[t.id] = {subject:fixPortesOuvertesText(v.subject||''), body:fixPortesOuvertesText(v.body||'')}; });
+  const patches = { custom_sms: customSms, custom_emails: customEmails };
+  if (previewEvent && fixPortesOuvertesText(previewEvent.name) !== previewEvent.name) patches.name = fixPortesOuvertesText(previewEvent.name);
+  const { error } = await db.from('events').update(patches).eq('id', currentEventId);
   if (error) { showToast('Erreur: '+error.message,'error'); return; }
   previewEvent.custom_sms = customSms; previewEvent.custom_emails = customEmails;
+  if (patches.name) previewEvent.name = patches.name;
+  document.getElementById('detail-event-name').textContent = previewEvent.name;
   showToast('Communications sauvegard\u00e9es !');
 }
 
@@ -2579,7 +3246,12 @@ function renderEdumovePreviews(ev) {
 
   emailTabValues = {};
   const ce = ev.custom_emails || {};
-  Object.keys(ce).forEach(t => { if(ce[t]) emailTabValues[t] = {subject:ce[t].subject||'', body:ce[t].body||''}; });
+  Object.keys(ce).forEach(t => {
+    if (ce[t]) emailTabValues[t] = {
+      subject: fixPortesOuvertesText(ce[t].subject || ''),
+      body: fixPortesOuvertesText(ce[t].body || '')
+    };
+  });
 
   document.getElementById('email-tabs').innerHTML = emailTypes.map((t,i) =>
     `<button onclick="showEmailTab('${t.id}')" class="email-tab px-3 py-1.5 text-sm font-medium rounded-lg transition ${i===0?'bg-primary-600 text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}" data-tab="${t.id}">${t.lb}</button>`
@@ -2660,10 +3332,31 @@ function pvEdumoveEmail(ev, type) {
 }
 
 // ============================================================
-// DIPLOMA EMAIL TEMPLATES (existing)
+// EMAIL TEMPLATES GENERIQUES (chaine physique : JPO, salons, autres)
+// Structure identique au template Diploma existant, avec logo et
+// couleurs adaptes a la marque de l'evenement (previewEvent.brand)
 // ============================================================
+function pvBrandCfg() {
+  return BRAND_CONFIG[(previewEvent && previewEvent.brand) || 'diploma'] || BRAND_CONFIG.diploma;
+}
+// Recolore les accents Diploma (or/navy) avec les couleurs de la marque.
+// Pour Diploma : aucun changement (rendu identique a l'existant).
+function pvBrandize(html) {
+  if (!previewEvent || (previewEvent.brand || 'diploma') === 'diploma') return html;
+  const b = pvBrandCfg();
+  return html
+    .replace(/#C2AB82/gi, b.theme.accent)
+    .replace(/#D4C49E/gi, b.theme.accent)
+    .replace(/#1C2436/gi, b.theme.dark)
+    .replace(/#2A3550/gi, b.theme.dark2);
+}
 function pvWrap(heroT, heroS, body, access) {
-  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F2EC;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;"><img src="https://26711031.fs1.hubspotusercontent-eu1.net/hubfs/26711031/logo-diploma-bleu.png" alt="Diploma" width="260" style="display:block;margin:0 auto;width:260px;"></div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:#1C2436;padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;line-height:1.2;color:#FFF;margin:0 0 16px;">${heroT}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroS}</p><div style="width:48px;height:2px;background:linear-gradient(90deg,#C2AB82,transparent);margin:28px auto 0;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}${access}</div></td></tr><tr><td><div style="background:#1C2436;padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#FFF;margin:0 0 12px;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">Nous avons h\u00e2te de vous retrouver. N'h\u00e9sitez pas \u00e0 nous contacter !</p><a href="mailto:admissions@diploma-sante.fr" style="display:inline-block;background:#C2AB82;color:#1C2436!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Diploma Sant\u00e9</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} Diploma Sant\u00e9</p></td></tr></table></body></html>`;
+  const b = pvBrandCfg();
+  const dark = b.theme.dark, accent = b.theme.accent;
+  const logoBlock = b.logo
+    ? `<img src="${b.logo}" alt="${b.name}" width="260" style="display:block;margin:0 auto;width:260px;">`
+    : `<span style="display:inline-block;font-size:26px;font-weight:700;letter-spacing:5px;color:${dark};font-family:'DM Sans',Arial,sans-serif;">${b.name.toUpperCase()}</span>`;
+  return pvBrandize(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#F5F2EC;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F2EC;"><tr><td align="center" style="padding:24px 16px;"><div style="text-align:center;padding:28px 0 20px;background:#FFF;border-radius:16px 16px 0 0;max-width:640px;margin:0 auto;">${logoBlock}</div><table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;"><tr><td><div style="background:${dark};padding:32px 32px 40px;text-align:center;"><h1 style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;line-height:1.2;color:#FFF;margin:0 0 16px;">${heroT}</h1><p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,0.72);max-width:440px;margin:0 auto;">${heroS}</p><div style="width:48px;height:2px;background:linear-gradient(90deg,${accent},transparent);margin:28px auto 0;"></div></div></td></tr><tr><td><div style="background:#FFF;padding:36px 32px;">${body}${access}</div></td></tr><tr><td><div style="background:${dark};padding:40px 32px;text-align:center;border-radius:0 0 16px 16px;"><h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#FFF;margin:0 0 12px;">\u00c0 tr\u00e8s bient\u00f4t !</h2><p style="font-size:15px;line-height:1.65;color:rgba(255,255,255,0.65);margin:0 0 24px;">Nous avons h\u00e2te de vous retrouver. N'h\u00e9sitez pas \u00e0 nous contacter !</p><a href="mailto:${b.sender}" style="display:inline-block;background:${accent};color:${dark}!important;font-size:15px;font-weight:700;padding:14px 32px;border-radius:100px;text-decoration:none;">Nous contacter \u2192</a><p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">${b.name}</p></div></td></tr></table><p style="font-size:11px;color:#9A9A9A;text-align:center;margin:24px 0 0;">\u00a9 ${new Date().getFullYear()} ${b.name}</p></td></tr></table></body></html>`);
 }
 function pvBrief(ev) {
   if (!ev.brief) return '';
@@ -2808,6 +3501,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('page-login').classList.remove('active');
     document.getElementById('page-qr').style.display = 'block';
     loadQrPage(qrCode);
+    return;
+  }
+  // Check for ?staff=EVENT_ID query parameter (public staff signup page, no auth)
+  const staffEventId = urlParams.get('staff');
+  if (staffEventId) {
+    document.getElementById('app-layout').style.display = 'none';
+    document.getElementById('page-login').classList.remove('active');
+    document.getElementById('page-staff').style.display = 'block';
+    loadStaffPage(staffEventId);
     return;
   }
   await handleRoute();
